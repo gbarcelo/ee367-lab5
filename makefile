@@ -1,23 +1,25 @@
 # Make file
 
 net367: host.o packet.o man.o main.o net.o
-	gcc -o net367 host.o man.o main.o net.o packet.o
+	gcc -o ./net367 ./obj/host.o ./obj/man.o ./obj/main.o ./obj/net.o ./obj/packet.o
 
-main.o: main.c
-	gcc -c main.c
+main.o: src/main.c
+	gcc -o ./obj/main.o ./src/main.c -I./include/ -c
 
-host.o: host.c 
-	gcc -c host.c  
+host.o: src/host.c
+	gcc -o ./obj/host.o ./src/host.c -I./include/ -c
 
-man.o:  man.c
-	gcc -c man.c
+man.o: src/man.c
+	gcc -o ./obj/man.o ./src/man.c -I./include/ -c
 
-net.o:  net.c
-	gcc -c net.c
+net.o:  src/net.c
+	gcc -o ./obj/net.o ./src/net.c -I./include/ -c
 
-packet.o:  packet.c
-	gcc -c packet.c
+packet.o:  src/packet.c
+	gcc -o ./obj/packet.o ./src/packet.c -I./include/ -c
+
+run: net367
+	./net367
 
 clean:
-	rm *.o
-
+	-rm ./obj/*.o
