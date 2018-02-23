@@ -1,5 +1,5 @@
 /*
- * Source code for the manager.  
+ * Source code for the manager.
  */
 
 #include <stdio.h>
@@ -16,20 +16,20 @@
 #include "host.h"
 
 #define MAXBUFFER 1000
-#define PIPE_WRITE 1 
+#define PIPE_WRITE 1
 #define PIPE_READ  0
 #define TENMILLISEC 10000
 #define DELAY_FOR_HOST_REPLY 10  /* Delay in ten of milliseconds */
 
-void display_host(struct man_port_at_man *list, 
+void display_host(struct man_port_at_man *list,
 			struct man_port_at_man *curr_host);
 void change_host(struct man_port_at_man *list,
 			struct man_port_at_man **curr_host);
-void display_host(struct man_port_at_man *list, 
+void display_host(struct man_port_at_man *list,
 			struct man_port_at_man *curr_host);
 void display_host_state(struct man_port_at_man *curr_host);
 void set_host_dir(struct man_port_at_man *curr_host);
-char man_get_user_cmd(int curr_host); 
+char man_get_user_cmd(int curr_host);
 
 
 /* Get the user command */
@@ -64,7 +64,7 @@ while(1) {
 		case 'u':
 		case 'd':
 		case 'q': return cmd;
-		default: 
+		default:
 			printf("Invalid: you entered %c\n\n", cmd);
 	}
 }
@@ -92,7 +92,7 @@ for (p=list; p!=NULL; p=p->next) {
 }
 
 /* Display the hosts on the consosle */
-void display_host(struct man_port_at_man *list, 
+void display_host(struct man_port_at_man *list,
 			struct man_port_at_man *curr_host)
 {
 struct man_port_at_man *p;
@@ -107,12 +107,12 @@ for (p=list; p!=NULL; p=p->next) {
 }
 }
 
-/* 
+/*
  * Send command to the host for it's state.  The command
  * is a single character 's'
  *
  * Wait for reply from host, which should be the host's state.
- * Then display on the console. 
+ * Then display on the console.
  */
 void display_host_state(struct man_port_at_man *curr_host)
 {
@@ -149,15 +149,15 @@ n = sprintf(msg, "m %s", name);
 write(curr_host->send_fd, msg, n);
 }
 
-/* 
+/*
  * Command host to send a ping to the host with id "curr_host"
  *
  * User is queried for the id of the host to ping.
  *
  * A command message is sent to the current host.
- *    The message starrts with 'p' followed by the id 
+ *    The message starrts with 'p' followed by the id
  *    of the host to ping.
- * 
+ *
  * Wiat for a reply
  */
 
@@ -188,13 +188,13 @@ printf("%s\n",reply);
  * Command host to send a file to another host.
  *
  * User is queried for the
- *    - name of the file to transfer; 
- *        the file is in the current directory 'dir' 
+ *    - name of the file to transfer;
+ *        the file is in the current directory 'dir'
  *    - id of the host to ping.
  *
  * A command message is sent to the current host.
- *    The message starrts with 'u' followed by the 
- *    -  id of the destination host 
+ *    The message starrts with 'u' followed by the
+ *    -  id of the destination host
  *    -  name of file to transfer
  */
 int file_upload(struct man_port_at_man *curr_host)
@@ -215,8 +215,25 @@ write(curr_host->send_fd, msg, n);
 usleep(TENMILLISEC);
 }
 
+int file_download(struct man_port_at_man *curr_host)
+{
+int n;
+int host_id;
+char name[NAME_LENGTH];
+char msg[NAME_LENGTH];
 
-/***************************** 
+printf("Enter file name to download: ");
+scanf("%s", name);
+printf("Enter host id of source:  ");
+scanf("%d", &host_id);
+printf("\n");
+
+n = sprintf(msg, "u %d %s", host_id, name);
+write(curr_host->send_fd, msg, n);
+usleep(TENMILLISEC);
+}
+
+/*****************************
  * Main loop of the manager  *
  *****************************/
 void man_main()
@@ -253,7 +270,7 @@ while(1) {
 		case 'p': /* Ping a host from the current host */
 			ping(curr_host);
 			break;
-		case 'u': /* Upload a file from the current host 
+		case 'u': /* Upload a file from the current host
 			     to another host */
 			file_upload(curr_host);
 			break;
@@ -262,10 +279,8 @@ while(1) {
 			break;
 		case 'q':  /* Quit */
 			return;
-		default: 
+		default:
 			printf("\nInvalid, you entered %c\n\n", cmd);
 	}
-}   
-} 
-
-
+}
+}
