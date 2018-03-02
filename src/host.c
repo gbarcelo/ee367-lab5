@@ -330,6 +330,20 @@ while(1) {
 				job_q_add(&job_q, new_job2);
 
 				break;
+				//TODO have d work properly
+			case 'd': /* Upload a file to a host */
+				sscanf(man_msg, "%d %s", &dst, name);//split man_msg so &dst = d, name = s
+				new_job = (struct host_job *)
+						malloc(sizeof(struct host_job));//allocate memory for the new_job
+				new_job->type = JOB_FILE_DOWNLOAD_SEND;//note that the new job type is to send an upload
+				new_job->file_upload_dst = dst;//set upload destination as parsed dst from man_msg
+				for (i=0; name[i] != '\0'; i++) {
+					new_job->fname_upload[i] = name[i];
+				}
+				new_job->fname_upload[i] = '\0';
+				job_q_add(&job_q, new_job);
+
+				break;
 
 			case 'u': /* Upload a file to a host */
 				sscanf(man_msg, "%d %s", &dst, name);//split man_msg so &dst = d, name = s
@@ -395,12 +409,18 @@ while(1) {
 				 * which carries the content of the file
 				 * in its payload
 				 */
-
+				 //TODO Add PKT_FILE_UPLOAD_IMD
 				case (char) PKT_FILE_UPLOAD_START:
 					new_job->type
 						= JOB_FILE_UPLOAD_RECV_START;
 					job_q_add(&job_q, new_job);
 					break;
+
+ 				case (char) PKT_FILE_UPLOAD_IMD:
+ 					new_job->type
+ 						= JOB_FILE_UPLOAD_RECV_IMD;
+ 					job_q_add(&job_q, new_job);
+ 					break;
 
 				case (char) PKT_FILE_UPLOAD_END:
 					new_job->type
@@ -510,8 +530,7 @@ while(1) {
 					new_packet->dst
 						= new_job->file_upload_dst;
 					new_packet->src = (char) host_id;
-					new_packet->type
-						= PKT_FILE_UPLOAD_START;
+					new_packet->type = PKT_FILE_UPLOAD_START;
 					for (i=0;
 						new_job->fname_upload[i]!= '\0';
 						i++) {
@@ -529,9 +548,44 @@ while(1) {
 					new_job2->type = JOB_SEND_PKT_ALL_PORTS;
 					new_job2->packet = new_packet;
 					job_q_add(&job_q, new_job2);
-
+					// TODO LOCATION OF INTERMEDIATE PACKETS
 					/*
 					 * Create the second packet which
+					 * has file contents
+					 */
+					new_packet = (struct packet *)
+						malloc(sizeof(struct packet));
+					new_packet->dst
+						= new_job->file_upload_dst;
+					new_packet->src = (char) host_id;
+					new_packet->type = PKT_FILE_UPLOAD_IMD;
+
+
+					n = fread(string,sizeof(char),
+						PKT_PAYLOAD_MAX, fp);
+					fclose(fp);
+					string[n] = '\0';
+
+					for (i=0; i<n; i++) {
+						new_packet->payload[i]
+							= string[i];
+					}
+
+					new_packet->length = n;
+
+					/*
+					 * Create a job to send the packet
+					 * and put the job in the job queue
+					 */
+
+					new_job2 = (struct host_job *)
+						malloc(sizeof(struct host_job));
+					new_job2->type = JOB_SEND_PKT_ALL_PORTS;
+					new_job2->packet = new_packet;
+					job_q_add(&job_q, new_job2);
+					//
+					/*
+					 * Create the last packet which
 					 * has the file contents
 					 */
 					new_packet = (struct packet *)
@@ -561,8 +615,7 @@ while(1) {
 
 					new_job2 = (struct host_job *)
 						malloc(sizeof(struct host_job));
-					new_job2->type
-						= JOB_SEND_PKT_ALL_PORTS;
+					new_job2->type = JOB_SEND_PKT_ALL_PORTS;
 					new_job2->packet = new_packet;
 					job_q_add(&job_q, new_job2);
 
@@ -592,6 +645,53 @@ while(1) {
 			free(new_job->packet);
 			free(new_job);
 			break;
+
+		case JOB_FILE_UPLOAD_RECV_IMD://TODO FINISH THIS
+
+			/*
+			 * Download packet payload into file buffer
+			 * data structure
+			 */
+			file_buf_add(&f_buf_upload,
+				new_job->packet->payload,
+				new_job->packet->length);
+
+			free(new_job->packet);
+			free(new_job);
+
+			if (dir_valid == 1) {
+
+				/*
+				 * Get file name from the file buffer
+				 * Then open the file
+				 */
+				file_buf_get_name(&f_buf_upload, string);
+				n = sprintf(name, "./%s/%s", dir, string);
+				name[n] = '\0';
+				fp = fopen(name, "w");
+
+				if (fp != NULL) {
+					/*
+					 * Write contents in the file
+					 * buffer into file
+					 */
+
+					while (f_buf_upload.occ > 0) {
+						n = file_buf_remove(
+							&f_buf_upload,
+							string,
+							PKT_PAYLOAD_MAX);
+						string[n] = '\0';
+						n = fwrite(string,
+							sizeof(char),
+							n,
+							fp);
+					}
+
+					fclose(fp);
+				}
+			}
+			break:
 
 		case JOB_FILE_UPLOAD_RECV_END:
 
