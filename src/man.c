@@ -205,13 +205,14 @@ char name[NAME_LENGTH];
 char msg[NAME_LENGTH];
 
 printf("Enter file name to upload: ");
-scanf("%s", name);
+scanf("%s", name);//Request the name of a file to upload, store in name
 printf("Enter host id of destination:  ");
-scanf("%d", &host_id);
+scanf("%d", &host_id);//Request the name of the destination Host ID, store in &host_id
 printf("\n");
-
-n = sprintf(msg, "u %d %s", host_id, name);
-write(curr_host->send_fd, msg, n);
+//like printf.
+n = sprintf(msg, "u %d %s", host_id, name);//make string "u host_id name" and store it in msg. Store amount of characters of msg in n
+//
+write(curr_host->send_fd, msg, n);//write msg with limit n to curr_host->send_fd file
 usleep(TENMILLISEC);
 }
 
