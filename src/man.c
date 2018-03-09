@@ -215,7 +215,7 @@ n = sprintf(msg, "u %d %s", host_id, name);//make string "u host_id name" and st
 write(curr_host->send_fd, msg, n);//write msg with limit n to curr_host->send_fd file
 usleep(TENMILLISEC);
 }
-
+//TODO properly impement file_download
 int file_download(struct man_port_at_man *curr_host)
 {
 int n;
@@ -229,8 +229,8 @@ printf("Enter host id of source:  ");
 scanf("%d", &host_id);
 printf("\n");
 
-n = sprintf(msg, "u %d %s", host_id, name);
-write(curr_host->send_fd, msg, n);
+n = sprintf(msg, "d %d %s", host_id, name);
+read(curr_host->recv_fd, msg, n);
 usleep(TENMILLISEC);
 }
 
@@ -276,7 +276,7 @@ while(1) {
 			file_upload(curr_host);
 			break;
 		case 'd': /* Download a file from a host */
-			printf("This command is not implemented\n");
+			file_download(curr_host);
 			break;
 		case 'q':  /* Quit */
 			return;
