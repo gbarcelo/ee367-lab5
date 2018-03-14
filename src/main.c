@@ -11,6 +11,7 @@
 #include "net.h"
 #include "man.h"
 #include "host.h"
+#include "switch.h"
 
 
 void main() {
@@ -43,7 +44,7 @@ void main() {
             if (p_node->type == HOST) {  /* Execute host routine */
                 host_main(p_node->id);
             } else if (p_node->type = SWITCH) {
-                /* Execute switch routine, which you have to write */
+                switch_main(p_node->id);
             }
             return;
         }
