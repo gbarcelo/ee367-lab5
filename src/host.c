@@ -411,18 +411,21 @@ while(1) {
 				 */
 				 //TODO Add PKT_FILE_UPLOAD_IMD
 				case (char) PKT_FILE_UPLOAD_START:
+					printf("\nstarting a file upload: char1 = %c\n");
 					new_job->type
 						= JOB_FILE_UPLOAD_RECV_START;
 					job_q_add(&job_q, new_job);
 					break;
 
  				case (char) PKT_FILE_UPLOAD_IMD:
+					printf("continuing a file upload\n");
  					new_job->type
  						= JOB_FILE_UPLOAD_RECV_IMD;
  					job_q_add(&job_q, new_job);
  					break;
 
 				case (char) PKT_FILE_UPLOAD_END:
+					printf("ending a file upload\n");
 					new_job->type
 						= JOB_FILE_UPLOAD_RECV_END;
 					job_q_add(&job_q, new_job);
@@ -656,7 +659,7 @@ while(1) {
 					new_job2->packet = new_packet;
 					job_q_add(&job_q, new_job2);
 
-					free(new_job);
+					//free(new_job);//TODO CHECK IF THIS NEEDS TO BE COMMENTED OUT
 				}
 				else {
 					/* Didn't open file */
