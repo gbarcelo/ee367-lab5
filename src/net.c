@@ -449,12 +449,20 @@ int load_net_data_file() {
         for (i = 0; i < node_num; i++) {
             fscanf(fp, " %c ", &node_type);
 
-            if (node_type = 'H') {
+            switch(node_type) {
+              case 'S':
+                fscanf(fp, " %d ", &node_id);
+                g_net_node[i].type = SWITCH;
+                g_net_node[i].id = node_id;
+                break;
+              case 'H':
                 fscanf(fp, " %d ", &node_id);
                 g_net_node[i].type = HOST;
                 g_net_node[i].id = node_id;
-            } else {
+                break;
+              default:
                 printf(" net.c: Unidentified Node Type\n");
+                break;
             }
 
             if (i != node_id) {
