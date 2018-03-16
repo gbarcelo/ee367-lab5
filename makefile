@@ -18,6 +18,9 @@ net.o:  src/net.c
 packet.o:  src/packet.c
 	gcc -o ./obj/packet.o ./src/packet.c -I./include/ -c
 
+switch.o:  src/switch.c
+		gcc -o ./obj/switch.o ./src/switch.c -I./include/ -c
+
 run: net367
 	./net367
 
