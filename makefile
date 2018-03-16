@@ -1,7 +1,7 @@
 # Make file
 
-net367: host.o packet.o man.o main.o net.o
-	gcc -o ./net367 ./obj/host.o ./obj/man.o ./obj/main.o ./obj/net.o ./obj/packet.o
+net367: host.o packet.o man.o main.o net.o switch.o
+	gcc -o ./net367 ./obj/switch.o ./obj/host.o ./obj/man.o ./obj/main.o ./obj/net.o ./obj/packet.o
 
 main.o: src/main.c
 	gcc -o ./obj/main.o ./src/main.c -I./include/ -c

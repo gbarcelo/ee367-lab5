@@ -1,10 +1,10 @@
-/* 
- * host.h 
+/*
+ * host.h
  */
 
 enum host_job_type {
 	JOB_SEND_PKT_ALL_PORTS,
-	JOB_PING_SEND_REQ,	
+	JOB_PING_SEND_REQ,
 	JOB_PING_SEND_REPLY,
 	JOB_PING_WAIT_FOR_REPLY,
 	JOB_FILE_UPLOAD_SEND,
@@ -33,4 +33,10 @@ struct job_queue {
 
 void host_main(int host_id);
 
+void job_q_add(struct job_queue *j_q, struct host_job *j);
 
+struct host_job *job_q_remove(struct job_queue *j_q);
+
+void job_q_init(struct job_queue *j_q);
+
+int job_q_num(struct job_queue *j_q);

@@ -94,10 +94,6 @@ void switch_main(int host_id) {
 
 	while(1) {
 
-
-			/* Get command from manager */
-		n = get_man_command(man_port, man_msg, &man_cmd);
-
 		///////////////////////////////////////////////////////////
 		// Get packets from incoming links and translate to jobs //
 	  //                Put jobs in job queue                  //
@@ -140,20 +136,20 @@ void switch_main(int host_id) {
 			/* Check if we already have port recorded in the forwarding table */
 			for ( i = 0; i < MAX_TABLE_SIZE && portMatch == -1; i++) {
 				//Found match
-				if (forwardingTable[i].valid == 1 && forwardingTable[i].host == new_job-.packet->src) {
+				if (forwardingTable[i].valid == 1 && forwardingTable[i].host == new_job->packet->src) {
 					portMatch = forwardingTable[i].port;
 				}
 			}
 
 			if (portMatch != -1) {
-				bool addedEntry = false;
-				for (int i = 0; i < MAX_TABLE_SIZE && addedEntry == false ; i++) {
+				int addedEntry = FALSE;
+				for (int i = 0; i < MAX_TABLE_SIZE && addedEntry == FALSE ; i++) {
 					if (forwardingTable[i].valid == 0) {
 						forwardingTable[i].valid = 1;
 						forwardingTable[i].host = new_job->packet->src;
 						forwardingTable[i].port = new_job->in_port_index;
 						portMatch = forwardingTable[i].port;
-					  addedEntry = true;
+					  addedEntry = TRUE;
 					}
 				}
 			}
@@ -162,16 +158,16 @@ void switch_main(int host_id) {
 
 			//// TODO: Edit to variable names to match file
 			////    START    ////
-			vport = -1;
-			for (i=0; i<MAX_FWD_LENGTH; i++) {
+			portMatch = -1;
+			for (i=0; i < MAX_TABLE_SIZE; i++) {
 				//scan for valid match
 				if (forwardingTable[i].valid && forwardingTable[i].host == new_job->packet->dst) {
-					vport = forwardingTable[i].port;
+					portMatch = forwardingTable[i].port;
 				}
 			}
 
-			if (vport > -1) {
-				packet_send(node_port[vport], new_job->packet);
+			if (portMatch > -1) {
+				packet_send(node_port[portMatch], new_job->packet);
 			} else {
 				for (k=0; k<node_port_num; k++) {
 					if (k != new_job->in_port_index) {
