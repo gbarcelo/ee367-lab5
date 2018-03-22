@@ -621,7 +621,7 @@ while(1) {
 				new_job2->packet = new_packet;
 				job_q_add(&job_q, new_job2);
 
-				free(new_job);//TODO CHECK IF THIS NEEDS TO BE COMMENTED OUT
+				free(new_job);
 			}
 			else {
 				/* Didn't open file */
