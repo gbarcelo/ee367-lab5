@@ -173,6 +173,7 @@ if (j_q->head == NULL ) {
 	j_q->head = j;
 	j_q->tail = j;
 	j_q->occ = 1;
+	j->next = NULL; //Chris Suggestion
 }
 else {
 	(j_q->tail)->next = j;
@@ -411,7 +412,7 @@ while(1) {
 				 */
 				 //TODO Add PKT_FILE_UPLOAD_IMD
 				case (char) PKT_FILE_UPLOAD_START:
-					printf("\nstarting a file upload: char1 = %c\n");
+					printf("\nstarting a file upload: char1 = \n");
 					new_job->type
 						= JOB_FILE_UPLOAD_RECV_START;
 					job_q_add(&job_q, new_job);
@@ -556,7 +557,7 @@ while(1) {
 					 * Create the second packet which
 					 * has file contents
 					 */
-					 for(int count = 0; count < 9; count++){
+					 for(int count = 0; count < 10; count++){
 						 new_packet = (struct packet *)
 						 malloc(sizeof(struct packet));
 						 new_packet->dst
@@ -588,41 +589,6 @@ while(1) {
 						 new_job2->packet = new_packet;
 						 job_q_add(&job_q, new_job2);
 					 }
-					// TODO LOCATION OF INTERMEDIATE PACKETS
-					/*
-					 * Create the second packet which
-					 * has file contents
-					 */
-					new_packet = (struct packet *)
-						malloc(sizeof(struct packet));
-					new_packet->dst
-						= new_job->file_upload_dst;
-					new_packet->src = (char) host_id;
-					new_packet->type = PKT_FILE_UPLOAD_IMD;
-
-
-					n = fread(string,sizeof(char),
-						PKT_PAYLOAD_MAX, fp);
-					//fclose(fp);//when gone does 1st 100 bytes, when present does 2nd 100 byts
-					string[n] = '\0';
-
-					for (i=0; i<n; i++) {
-						new_packet->payload[i]
-							= string[i];
-					}
-
-					new_packet->length = n;
-
-					/*
-					 * Create a job to send the packet
-					 * and put the job in the job queue
-					 */
-
-					new_job2 = (struct host_job *)
-						malloc(sizeof(struct host_job));
-					new_job2->type = JOB_SEND_PKT_ALL_PORTS;
-					new_job2->packet = new_packet;
-					job_q_add(&job_q, new_job2);
 					//END INTERMEDIATE
 					/*
 					 * Create the last packet which
@@ -631,7 +597,7 @@ while(1) {
 					new_packet = (struct packet *)
 						malloc(sizeof(struct packet));
 					new_packet->dst
-						= new_job->file_upload_dst;
+						= new_job ->file_upload_dst;
 					new_packet->src = (char) host_id;
 					new_packet->type = PKT_FILE_UPLOAD_END;
 
@@ -659,7 +625,7 @@ while(1) {
 					new_job2->packet = new_packet;
 					job_q_add(&job_q, new_job2);
 
-					//free(new_job);//TODO CHECK IF THIS NEEDS TO BE COMMENTED OUT
+					free(new_job);//TODO CHECK IF THIS NEEDS TO BE COMMENTED OUT
 				}
 				else {
 					/* Didn't open file */
