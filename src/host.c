@@ -348,7 +348,6 @@ while(1) {
 				break;
 
 			case 'u': /* Upload a file to a host */
-				printf("UPLOAD ATTEMPTED 1\n");
 				sscanf(man_msg, "%d %s", &dst, name);//split man_msg so &dst = d, name = s
 				new_job = (struct host_job *)
 						malloc(sizeof(struct host_job));//allocate memory for the new_job
@@ -529,8 +528,8 @@ while(1) {
 				new_packet = (struct packet *)
 					malloc(sizeof(struct packet));
 				new_packet->dst
-					= new_job->file_upload_dst;
-				new_packet->src = (char) host_id;
+					= host_id;
+				new_packet->src = (char) new_job->file_upload_dst;
 				new_packet->type = PKT_FILE_UPLOAD_START;
 				for (i=0;
 					new_job->fname_upload[i]!= '\0';
@@ -558,8 +557,8 @@ while(1) {
 					 new_packet = (struct packet *)
 					 malloc(sizeof(struct packet));
 					 new_packet->dst
-					 = new_job->file_upload_dst;
-					 new_packet->src = (char) host_id;
+					 = host_id;
+					 new_packet->src = (char) new_job->file_upload_dst;
 					 new_packet->type = PKT_FILE_UPLOAD_IMD;
 
 
@@ -594,8 +593,8 @@ while(1) {
 				new_packet = (struct packet *)
 					malloc(sizeof(struct packet));
 				new_packet->dst
-					= new_job ->file_upload_dst;
-				new_packet->src = (char) host_id;
+					= host_id;
+				new_packet->src = (char) new_job->file_upload_dst;
 				new_packet->type = PKT_FILE_UPLOAD_END;
 
 
