@@ -292,7 +292,6 @@ while(1) {
 
 		/* Execute command */
 	if (n>0) {
-		printf("command imminent. Type: %c\n",man_cmd);
 		switch(man_cmd) {
 			case 's':
 				reply_display_host_state(man_port,
@@ -340,9 +339,9 @@ while(1) {
 				new_job->type = JOB_FILE_DOWNLOAD_SEND;//note that the new job type is to recieve a download
 				new_job->file_upload_dst = dst;//set upload destination as parsed dst from man_msg
 				for (i=0; name[i] != '\0'; i++) {
-					new_job->fname_upload[i] = name[i];
+					new_job->fname_download[i] = name[i];
 				}
-				new_job->fname_upload[i] = '\0';
+				new_job->fname_download[i] = '\0';
 				job_q_add(&job_q, new_job);
 
 				break;
@@ -354,9 +353,9 @@ while(1) {
 				new_job->type = JOB_FILE_UPLOAD_SEND;//note that the new job type is to send an upload
 				new_job->file_upload_dst = dst;//set upload destination as parsed dst from man_msg
 				for (i=0; name[i] != '\0'; i++) {
-					new_job->fname_upload[i] = name[i];
+					new_job->fname_download[i] = name[i];
 				}
-				new_job->fname_upload[i] = '\0';
+				new_job->fname_download[i] = '\0';
 				job_q_add(&job_q, new_job);
 
 				break;
@@ -420,18 +419,38 @@ while(1) {
 					break;
 
  				case (char) PKT_FILE_UPLOAD_IMD:
-					printf("continuing a file upload\n");
+					//printf("continuing a file upload\n");
  					new_job->type
  						= JOB_FILE_UPLOAD_RECV_IMD;
  					job_q_add(&job_q, new_job);
  					break;
 
 				case (char) PKT_FILE_UPLOAD_END:
-					printf("ending a file upload\n");
+					//printf("ending a file upload\n");
 					new_job->type
 						= JOB_FILE_UPLOAD_RECV_END;
 					job_q_add(&job_q, new_job);
 					break;
+ 				case (char) PKT_FILE_DOWNLOAD_START:
+ 					//printf("\nstarting a file download: char1 = \n");
+ 					new_job->type
+ 						= JOB_FILE_DOWNLOAD_RECV_START;
+ 					job_q_add(&job_q, new_job);
+ 					break;
+
+  				case (char) PKT_FILE_DOWNLOAD_IMD:
+ 					//printf("continuing a file download\n");
+  					new_job->type
+  						= JOB_FILE_DOWNLOAD_RECV_IMD;
+  					job_q_add(&job_q, new_job);
+  					break;
+
+ 				case (char) PKT_FILE_DOWNLOAD_END:
+ 					//printf("ending a file download\n");
+ 					new_job->type
+ 						= JOB_FILE_DOWNLOAD_RECV_END;
+ 					job_q_add(&job_q, new_job);
+ 					break;
 				default:
 					free(in_packet);
 					free(new_job);
@@ -516,7 +535,7 @@ while(1) {
 		/* Open file */
 		if (dir_valid == 1) {
 			n = sprintf(name, "./%s/%s",
-				dir, new_job->fname_upload);
+				dir, new_job->fname_download);
 			name[n] = '\0';
 			fp = fopen(name, "r");
 			if (fp != NULL) {
@@ -530,12 +549,12 @@ while(1) {
 				new_packet->dst
 					= host_id;
 				new_packet->src = (char) new_job->file_upload_dst;
-				new_packet->type = PKT_FILE_UPLOAD_START;
+				new_packet->type = PKT_FILE_DOWNLOAD_START;
 				for (i=0;
-					new_job->fname_upload[i]!= '\0';
+					new_job->fname_download[i]!= '\0';
 					i++) {
 					new_packet->payload[i] =
-						new_job->fname_upload[i];
+						new_job->fname_download[i];
 				}
 				new_packet->length = i;
 
@@ -558,8 +577,8 @@ while(1) {
 					 malloc(sizeof(struct packet));
 					 new_packet->dst
 					 = host_id;
-					 new_packet->src = (char) new_job->file_upload_dst;
-					 new_packet->type = PKT_FILE_UPLOAD_IMD;
+					 new_packet->src = (char) new_job->file_upload_dst;//set the src to be the
+					 new_packet->type = PKT_FILE_DOWNLOAD_IMD;
 
 
 					 n = fread(string,sizeof(char),
@@ -595,7 +614,7 @@ while(1) {
 				new_packet->dst
 					= host_id;
 				new_packet->src = (char) new_job->file_upload_dst;
-				new_packet->type = PKT_FILE_UPLOAD_END;
+				new_packet->type = PKT_FILE_DOWNLOAD_END;
 
 
 				n = fread(string,sizeof(char),
@@ -816,6 +835,116 @@ while(1) {
 			break;
 
 		case JOB_FILE_UPLOAD_RECV_END:
+
+			/*
+			 * Download packet payload into file buffer
+			 * data structure
+			 */
+			file_buf_add(&f_buf_upload,
+				new_job->packet->payload,
+				new_job->packet->length);
+
+			free(new_job->packet);
+			free(new_job);
+
+			if (dir_valid == 1) {
+
+				/*
+				 * Get file name from the file buffer
+				 * Then open the file
+				 */
+				file_buf_get_name(&f_buf_upload, string);
+				n = sprintf(name, "./%s/%s", dir, string);
+				name[n] = '\0';
+				fp = fopen(name, "w");
+
+				if (fp != NULL) {
+					/*
+					 * Write contents in the file
+					 * buffer into file
+					 */
+
+					while (f_buf_upload.occ > 0) {
+						n = file_buf_remove(
+							&f_buf_upload,
+							string,
+							PKT_PAYLOAD_MAX);
+						string[n] = '\0';
+						n = fwrite(string,
+							sizeof(char),
+							n,
+							fp);
+					}
+
+					fclose(fp);
+				}
+			}
+
+			break;
+
+		case JOB_FILE_DOWNLOAD_RECV_START:
+
+			/* Initialize the file buffer data structure */
+			file_buf_init(&f_buf_upload);
+
+			/*
+			 * Transfer the file name in the packet payload
+			 * to the file buffer data structure
+			 */
+			file_buf_put_name(&f_buf_upload,
+				new_job->packet->payload,
+				new_job->packet->length);
+
+			free(new_job->packet);
+			free(new_job);
+			break;
+
+		case JOB_FILE_DOWNLOAD_RECV_IMD://TODO FINISH THIS
+
+			/*
+			 * Download packet payload into file buffer
+			 * data structure
+			 */
+			file_buf_add(&f_buf_upload,
+				new_job->packet->payload,
+				new_job->packet->length);
+
+			free(new_job->packet);
+			free(new_job);
+
+			if (dir_valid == 1) {
+
+				/*
+				 * Get file name from the file buffer
+				 * Then open the file
+				 */
+				file_buf_get_name(&f_buf_upload, string);
+				n = sprintf(name, "./%s/%s", dir, string);
+				//name[n] = '\0';
+				fp = fopen(name, "w");
+
+				// if (fp != NULL) {
+				// 	 //Write contents in the file
+				// 	 // buffer into file
+				//
+				// 	while (f_buf_upload.occ > 0) {
+				// 		n = file_buf_remove(
+				// 			&f_buf_upload,
+				// 			string,
+				// 			PKT_PAYLOAD_MAX);
+				// 		string[n] = '\0';
+				// 		n = fwrite(string,
+				// 			sizeof(char),
+				// 			n,
+				// 			fp);
+				// 	}
+				//
+				// 	fclose(fp);
+				// }
+			}
+			break;
+
+		case JOB_FILE_DOWNLOAD_RECV_END:
 
 			/*
 			 * Download packet payload into file buffer
