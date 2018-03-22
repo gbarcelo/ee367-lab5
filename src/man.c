@@ -230,7 +230,8 @@ scanf("%d", &host_id);
 printf("\n");
 
 n = sprintf(msg, "d %d %s", host_id, name);
-read(curr_host->recv_fd, msg, n);
+//read(curr_host->recv_fd, msg, n);
+write(curr_host->send_fd, msg, n);
 usleep(TENMILLISEC);
 }
 
