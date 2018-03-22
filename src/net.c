@@ -32,6 +32,7 @@
 #define MAX_FILE_NAME 100
 #define PIPE_READ 0
 #define PIPE_WRITE 1
+#define CONFIG_LINE_MAX 120 // Maximum characters per line in .config file
 
 enum bool {
     FALSE, TRUE
@@ -46,6 +47,10 @@ struct net_link {
     enum NetLinkType type;
     int pipe_node0;
     int pipe_node1;
+    char *dom_node0;
+    int port_node0;
+    char *dom_node1;
+    int port_node1;
 };
 
 
@@ -484,6 +489,7 @@ int load_net_data_file() {
     int link_num;
     char link_type;
     int node0, node1;
+    char sockStr[CONFIG_LINE_MAX];
 
     fscanf(fp, " %d ", &link_num);
     printf("Number of links = %d\n", link_num);
@@ -502,6 +508,25 @@ int load_net_data_file() {
                 g_net_link[i].type = PIPE;
                 g_net_link[i].pipe_node0 = node0;
                 g_net_link[i].pipe_node1 = node1;
+            } else if (link_type == 'S') {
+                fscanf(fp, " %d ", &node0);
+                if (fgets(sockStr, CONFIG_LINE_MAX, fp)!=NULL){
+                  // for(char *p = strtok(sockStr," "); p!=NULL; p = strtok(NULL, " ")){}
+                  // char *p = strtok(sockStr," ");
+                  // char *cp;
+                  g_net_link[i].type = SOCKET;
+                  g_net_link[i].pipe_node0 = node0;
+                  g_net_link[i].dom_node0 = strtok(sockStr," ");
+                  g_net_link[i].port_node0 = atoi(strtok(NULL," "));
+                  g_net_link[i].pipe_node1 = node0+127; // Regular Host IDs are 0-127
+                  g_net_link[i].dom_node1 = strtok(NULL," ");
+                  g_net_link[i].port_node1 = atoi(strtok(NULL," "));
+                  // printf("link dom0: %s\n",g_net_link[i].dom_node0);
+                  // printf("link port0: %d\n",g_net_link[i].port_node0);
+                  // printf("link dom1: %s\n",g_net_link[i].dom_node1);
+                  // printf("link port1: %d\n",g_net_link[i].port_node1);
+                }
+
             } else {
                 printf("   net.c: Unidentified link type\n");
             }
@@ -527,7 +552,8 @@ int load_net_data_file() {
                    g_net_link[i].pipe_node0,
                    g_net_link[i].pipe_node1);
         } else if (g_net_link[i].type == SOCKET) {
-            printf("   Socket: to be constructed (net.c)\n");
+          printf("   Link (%d, EXTERNAL) SOCKET\n",
+                 g_net_link[i].pipe_node0);
         }
     }
 
