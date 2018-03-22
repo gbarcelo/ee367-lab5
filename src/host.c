@@ -292,7 +292,7 @@ while(1) {
 
 		/* Execute command */
 	if (n>0) {
-		printf("command imminent. Type: %c\n",man_cmd);
+		//printf("command imminent. Type: %c\n",man_cmd);
 		switch(man_cmd) {
 			case 's':
 				reply_display_host_state(man_port,
@@ -334,17 +334,23 @@ while(1) {
 				break;
 				//TODO have d work properly
 			case 'd':/* Download a file to a host TODO properly do this */
-				sscanf(man_msg, "%d %s", &dst, name);//split man_msg so &dst = d, name = s
-				new_job = (struct host_job *)
-						malloc(sizeof(struct host_job));//allocate memory for the new_job
-				new_job->type = JOB_FILE_DOWNLOAD_SEND;//note that the new job type is to recieve a download
-				new_job->file_upload_dst = dst;//set upload destination as parsed dst from man_msg
-				for (i=0; name[i] != '\0'; i++) {
-					new_job->fname_upload[i] = name[i];
+				sscanf(man_msg, "%d %s", &dst, name);
+				/*create new download request packet*/
+				new_packet = (struct packet *)
+					malloc(sizeof(struct packet));
+				for(i=0; name[i] !='\0'; ++i){
+					new_packet->payload[i] = name[i];
 				}
-				new_job->fname_upload[i] = '\0';
+				new_packet->src = (char) host_id;
+				new_packet->dst = (char) dst;
+				new_packet->type = (char) PKT_FILE_DOWNLOAD_REQ;
+				new_packet->length = i;
+				new_job = (struct host_job *)
+					malloc(sizeof(struct host_job));
+				new_job->packet = new_packet;
+				new_job->type = JOB_SEND_PKT_ALL_PORTS;
+				new_job->file_upload_dst = dst;
 				job_q_add(&job_q, new_job);
-
 				break;
 
 			case 'u': /* Upload a file to a host */
@@ -413,24 +419,34 @@ while(1) {
 				 */
 				 //TODO Add PKT_FILE_UPLOAD_IMD
 				case (char) PKT_FILE_UPLOAD_START:
-					printf("\nstarting a file upload: char1 = \n");
+					//printf("\nstarting a file upload: char1 = \n");
 					new_job->type
 						= JOB_FILE_UPLOAD_RECV_START;
 					job_q_add(&job_q, new_job);
 					break;
 
  				case (char) PKT_FILE_UPLOAD_IMD:
-					printf("continuing a file upload\n");
+					//printf("continuing a file upload\n");
  					new_job->type
  						= JOB_FILE_UPLOAD_RECV_IMD;
  					job_q_add(&job_q, new_job);
  					break;
 
 				case (char) PKT_FILE_UPLOAD_END:
-					printf("ending a file upload\n");
+					//printf("ending a file upload\n");
 					new_job->type
 						= JOB_FILE_UPLOAD_RECV_END;
 					job_q_add(&job_q, new_job);
+					break;
+				case (char) PKT_FILE_DOWNLOAD_REQ:
+					new_job->type = JOB_FILE_UPLOAD_SEND;
+					for(i=0; i < in_packet->length; ++i){
+						new_job->fname_upload[i] = in_packet->payload[i];
+					}
+					new_job->fname_upload[i] = '\0';
+					new_job->file_upload_dst = in_packet->src;
+					job_q_add(&job_q, new_job);
+					free(in_packet);
 					break;
 				default:
 					free(in_packet);
@@ -509,125 +525,6 @@ while(1) {
 				write(man_port->send_fd, man_reply_msg, n+1);
 				free(new_job);
 			}
-
-			break;
-
-		case JOB_FILE_DOWNLOAD_SEND:
-		/* Open file */
-		if (dir_valid == 1) {
-			n = sprintf(name, "./%s/%s",
-				dir, new_job->fname_upload);
-			name[n] = '\0';
-			fp = fopen(name, "r");
-			if (fp != NULL) {
-
-							/*
-				 * Create first packet which
-				 * has the file name
-				 */
-				new_packet = (struct packet *)
-					malloc(sizeof(struct packet));
-				new_packet->dst
-					= host_id;
-				new_packet->src = (char) new_job->file_upload_dst;
-				new_packet->type = PKT_FILE_UPLOAD_START;
-				for (i=0;
-					new_job->fname_upload[i]!= '\0';
-					i++) {
-					new_packet->payload[i] =
-						new_job->fname_upload[i];
-				}
-				new_packet->length = i;
-
-				/*
-				 * Create a job to send the packet
-				 * and put it in the job queue
-				 */
-				new_job2 = (struct host_job *)
-					malloc(sizeof(struct host_job));
-				new_job2->type = JOB_SEND_PKT_ALL_PORTS;
-				new_job2->packet = new_packet;
-				job_q_add(&job_q, new_job2);
-				// TODO LOCATION OF INTERMEDIATE PACKETS
-				/*
-				 * Create the second packet which
-				 * has file contents
-				 */
-				 for(int count = 0; count < 10; count++){
-					 new_packet = (struct packet *)
-					 malloc(sizeof(struct packet));
-					 new_packet->dst
-					 = host_id;
-					 new_packet->src = (char) new_job->file_upload_dst;
-					 new_packet->type = PKT_FILE_UPLOAD_IMD;
-
-
-					 n = fread(string,sizeof(char),
-					 PKT_PAYLOAD_MAX, fp);
-					 //fclose(fp);//when gone does 1st 100 bytes, when present does 2nd 100 byts
-					 string[n] = '\0';
-
-					 for (i=0; i<n; i++) {
-						 new_packet->payload[i]
-						 = string[i];
-					 }
-
-					 new_packet->length = n;
-
-					 /*
-					 * Create a job to send the packet
-					 * and put the job in the job queue
-					 */
-
-					 new_job2 = (struct host_job *)
-					 malloc(sizeof(struct host_job));
-					 new_job2->type = JOB_SEND_PKT_ALL_PORTS;
-					 new_job2->packet = new_packet;
-					 job_q_add(&job_q, new_job2);
-				 }
-				//END INTERMEDIATE
-				/*
-				 * Create the last packet which
-				 * has the file contents
-				 */
-				new_packet = (struct packet *)
-					malloc(sizeof(struct packet));
-				new_packet->dst
-					= host_id;
-				new_packet->src = (char) new_job->file_upload_dst;
-				new_packet->type = PKT_FILE_UPLOAD_END;
-
-
-				n = fread(string,sizeof(char),
-					PKT_PAYLOAD_MAX, fp);
-				fclose(fp);
-				string[n] = '\0';
-
-				for (i=0; i<n; i++) {
-					new_packet->payload[i]
-						= string[i];
-				}
-
-				new_packet->length = n;
-
-				/*
-				 * Create a job to send the packet
-				 * and put the job in the job queue
-				 */
-
-				new_job2 = (struct host_job *)
-					malloc(sizeof(struct host_job));
-				new_job2->type = JOB_SEND_PKT_ALL_PORTS;
-				new_job2->packet = new_packet;
-				job_q_add(&job_q, new_job2);
-
-				free(new_job);
-			}
-			else {
-				/* Didn't open file */
-			}
-		}
-		break;
 
 			break;
 		/* The next three jobs deal with uploading a file */
@@ -859,11 +756,11 @@ while(1) {
 
 					fclose(fp);
 				}
+
 			}
 
 			break;
 		}
-
 	}
 
 
