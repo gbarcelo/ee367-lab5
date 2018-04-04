@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #define _GNU_SOURCE
 
@@ -404,6 +406,23 @@ void create_port_list() {
             p1->next = g_port_list;
             g_port_list = p0;
 
+        } else if (g_net_link[i].type == SOCKET) {
+            node0 = g_net_link[i].pipe_node0;
+            node1 = g_net_link[i].pipe_node1;
+
+            p0 = (struct net_port *) malloc(sizeof(struct net_port));
+            p0->type = g_net_link[i].type;
+            p0->pipe_host_id = node0;
+
+            p1 = (struct net_port *) malloc(sizeof(struct net_port));
+            p1->type = g_net_link[i].type;
+            p1->pipe_host_id = node1;
+
+
+
+
+            }
+            /*****************cs.tau sample server code*********************/
         }
     }
 
