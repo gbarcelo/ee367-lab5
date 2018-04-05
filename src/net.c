@@ -19,6 +19,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include <netdb.h>
+#include <arpa/inet.h>
+
 #define _GNU_SOURCE
 
 #include <fcntl.h>
@@ -35,6 +38,9 @@
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 #define CONFIG_LINE_MAX 120 // Maximum characters per line in .config file
+#define MAX_HOSTS 127 // Maximum number of hosts
+#define BACKLOG 5
+#define MAX_BUF_SIZE 256
 
 enum bool {
     FALSE, TRUE
@@ -49,10 +55,10 @@ struct net_link {
     enum NetLinkType type;
     int pipe_node0;
     int pipe_node1;
-    char *dom_node0;
-    int port_node0;
-    char *dom_node1;
-    int port_node1;
+    char *internal_node_dom;
+    char *internal_port;
+    char *external_node_dom;
+    char *external_port;
 };
 
 
@@ -185,6 +191,15 @@ struct man_port_at_host *net_get_host_port(int host_id) {
     return (p);
 }
 
+// Get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa)
+{
+	if (sa->sa_family == AF_INET) {
+		return &(((struct sockaddr_in*)sa)->sin_addr);
+	}
+
+	return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
 
 /* Close all host ports not used by manager */
 void net_close_man_ports_at_hosts() {
@@ -371,61 +386,206 @@ void create_port_list() {
 
     g_port_list = NULL;
     for (i = 0; i < g_net_link_num; i++) {
+
+      pipe(fd01);  /* Create a pipe */
+      /* Make the pipe nonblocking at both ends */
+      fcntl(fd01[PIPE_WRITE], F_SETFL,
+            fcntl(fd01[PIPE_WRITE], F_GETFL) | O_NONBLOCK);
+      fcntl(fd01[PIPE_READ], F_SETFL,
+            fcntl(fd01[PIPE_READ], F_GETFL) | O_NONBLOCK);
+
+      pipe(fd10);  /* Create a pipe */
+      /* Make the pipe nonblocking at both ends */
+      fcntl(fd10[PIPE_WRITE], F_SETFL,
+            fcntl(fd10[PIPE_WRITE], F_GETFL) | O_NONBLOCK);
+      fcntl(fd10[PIPE_READ], F_SETFL,
+            fcntl(fd10[PIPE_READ], F_GETFL) | O_NONBLOCK);
+
+      node0 = g_net_link[i].pipe_node0;
+      node1 = g_net_link[i].pipe_node1; // TODO May have to edit
+
+      p0 = (struct net_port *) malloc(sizeof(struct net_port));
+      p0->type = g_net_link[i].type;
+      p0->pipe_host_id = node0;
+
+      p1 = (struct net_port *) malloc(sizeof(struct net_port));
+      p1->type = g_net_link[i].type;
+      p1->pipe_host_id = node1;
+
+      // Pipe from Node0 to Node1
+      p0->pipe_send_fd = fd01[PIPE_WRITE];
+      p1->pipe_recv_fd = fd01[PIPE_READ];
+
+      // Pipe from Node1 to Node0
+      p1->pipe_send_fd = fd10[PIPE_WRITE];
+      p0->pipe_recv_fd = fd10[PIPE_READ];
+
         if (g_net_link[i].type == PIPE) {
-
-            node0 = g_net_link[i].pipe_node0;
-            node1 = g_net_link[i].pipe_node1;
-
-            p0 = (struct net_port *) malloc(sizeof(struct net_port));
-            p0->type = g_net_link[i].type;
-            p0->pipe_host_id = node0;
-
-            p1 = (struct net_port *) malloc(sizeof(struct net_port));
-            p1->type = g_net_link[i].type;
-            p1->pipe_host_id = node1;
-
-            pipe(fd01);  /* Create a pipe */
-            /* Make the pipe nonblocking at both ends */
-            fcntl(fd01[PIPE_WRITE], F_SETFL,
-                  fcntl(fd01[PIPE_WRITE], F_GETFL) | O_NONBLOCK);
-            fcntl(fd01[PIPE_READ], F_SETFL,
-                  fcntl(fd01[PIPE_READ], F_GETFL) | O_NONBLOCK);
-            p0->pipe_send_fd = fd01[PIPE_WRITE];
-            p1->pipe_recv_fd = fd01[PIPE_READ];
-
-            pipe(fd10);  /* Create a pipe */
-            /* Make the pipe nonblocking at both ends */
-            fcntl(fd10[PIPE_WRITE], F_SETFL,
-                  fcntl(fd10[PIPE_WRITE], F_GETFL) | O_NONBLOCK);
-            fcntl(fd10[PIPE_READ], F_SETFL,
-                  fcntl(fd10[PIPE_READ], F_GETFL) | O_NONBLOCK);
-            p1->pipe_send_fd = fd10[PIPE_WRITE];
-            p0->pipe_recv_fd = fd10[PIPE_READ];
 
             p0->next = p1; /* Insert ports in linked lisst */
             p1->next = g_port_list;
             g_port_list = p0;
 
-        } else if (g_net_link[i].type == SOCKET) {
-            node0 = g_net_link[i].pipe_node0;
-            node1 = g_net_link[i].pipe_node1;
+      } else if (g_net_link[i].type == SOCKET) {
+          // Node1 represents socket/client
 
-            p0 = (struct net_port *) malloc(sizeof(struct net_port));
-            p0->type = g_net_link[i].type;
-            p0->pipe_host_id = node0;
+          /**************************Server Creation**************************/
+          int server_socket;
 
-            p1 = (struct net_port *) malloc(sizeof(struct net_port));
-            p1->type = g_net_link[i].type;
-            p1->pipe_host_id = node1;
+          // =================== from lab 3 ===================
+          int rvs;
+          int yes=1;
+          struct addrinfo hintss, *servinfos, *p;
+          memset(&hintss, 0, sizeof hintss);
+        	hintss.ai_family = AF_UNSPEC;
+        	hintss.ai_socktype = SOCK_STREAM;
+        	hintss.ai_flags = AI_PASSIVE; // use my IP
+          if ((rvs = getaddrinfo(g_net_link[i].internal_node_dom, g_net_link[i].internal_port, &hintss, &servinfos)) != 0) {
+        		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rvs));
+        		return 1;
+        	}
 
+          // loop through all the results and bind to the first we can
+        	for(p = servinfos; p != NULL; p = p->ai_next) {
+            // Create server socket
+        		if ((server_socket = socket(p->ai_family, p->ai_socktype,
+        				p->ai_protocol)) == -1) {
+        			perror("server: socket");
+        			continue;
+        		}
 
+            // Making socket nonblocking
+            int flags = fcntl(server_socket, F_GETFL, 0);   /* get socket's flags */
+            flags |= O_NONBLOCK;  /* Add O_NONBLOCK status to socket descriptor's flags */
+            int status = fcntl(server_socket, F_SETFL, flags); /* Apply the new flags to the socket */
 
+        		if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes,
+        				sizeof(int)) == -1) {
+        			perror("setsockopt");
+        			exit(1);
+        		}
 
+            // Bind the socket to specified IP and PORT
+        		if (bind(server_socket, p->ai_addr, p->ai_addrlen) == -1) {
+        			close(server_socket);
+        			perror("server: bind");
+        			continue;
+        		}
+
+        		break;
+        	}
+
+        	if (p == NULL)  {
+        		fprintf(stderr, "server: failed to bind\n");
+        		return 2;
+        	}
+
+        	freeaddrinfo(servinfos); // all done with this structure
+          // =================== from lab 3 ===================
+
+          // Start listening on socket for up to BACKLOG # of connections
+          listen(server_socket, BACKLOG);
+
+          // Any while loops would start here, before accept and after listen
+          if(!fork()) { // Begin Child Process (Server)
+            close(fd10[PIPE_READ]);
+            close(fd01[PIPE_READ]);
+            close(fd01[PIPE_WRITE]);
+            int inbound_size;
+            int client_socket;
+            char server_message[MAX_BUF_SIZE];
+            while(1){
+              // Accept a connection -- we now have a client to communicate with
+              client_socket = accept(server_socket, NULL, NULL);
+              while( (inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0)) > 0 ) {
+                write(fd10[PIPE_WRITE], server_message, sizeof(server_message));
+              }
+              memset(server_message, 0, sizeof(server_message));
             }
-            /*****************cs.tau sample server code*********************/
-        }
-    }
+          } else {  // Begin Parent Process
+            close(fd10[PIPE_WRITE]);
+            // Parent doesn't need socket
+            close(server_socket);
+          }
+          /**************************Server Creation**************************/
 
+          /**************************Client Creation**************************/
+          if(!fork()){  // Child Process Start (Client)
+            close(fd10[PIPE_READ]);
+            close(fd10[PIPE_WRITE]);
+            close(fd01[PIPE_WRITE]);
+
+            int network_socket;
+
+            // =================== from lab 3 ===================
+            struct addrinfo hintsc, *servinfoc, *p;
+          	int rvc;
+          	char s[INET6_ADDRSTRLEN];
+
+            memset(&hintsc, 0, sizeof hintsc);
+          	hintsc.ai_family = AF_UNSPEC;
+          	hintsc.ai_socktype = SOCK_STREAM;
+
+          	if ((rvc = getaddrinfo(g_net_link[i].external_node_dom, g_net_link[i].external_port, &hintsc, &servinfoc)) != 0) {
+          		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rvc));
+          		return 1;
+          	}
+
+            // Keep attempting to connect
+            // loop through all the results and connect to the first we can
+          	for(p = servinfoc; p != NULL; p = p->ai_next) {
+              // Create a socket
+          		if ((network_socket = socket(p->ai_family, p->ai_socktype,
+          				p->ai_protocol)) == -1) {
+          			perror("client: socket");
+          			continue;
+          		}
+
+          		if (connect(network_socket, p->ai_addr, p->ai_addrlen) == -1) {
+          			close(network_socket);
+          			perror("client: connect");
+          			continue;
+          		}
+
+          		break;
+          	}
+
+          	if (p == NULL) {
+          		fprintf(stderr, "client: failed to connect\n");
+          		return 2;
+          	}
+
+          	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+          			s, sizeof s);
+          	printf("client: connecting to %s\n", s);
+
+          	freeaddrinfo(servinfoc); // all done with this structure
+            // =================== from lab 3 ===================
+
+            // While loop would start here
+            // Buffer to recieve data from server_address
+            char client_message[MAX_BUF_SIZE];
+            int inbound_size;
+            while(1){
+              // TODO:
+              // READ pipe and if not empty, do a send
+              // IF RECV is not empty, WRITE TO PIPE
+              // Recieve data from the server_address
+              // if (recv(network_socket, &server_response, sizeof(server_response), 0)>0){
+              while( (inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message))) > 0 ) {
+                send(network_socket, client_message, sizeof(client_message), 0);
+              }
+              memset(client_message, 0, sizeof(client_message));
+              // } end if(recv...)
+            }
+            close(network_socket);
+          } else {  // Parent Process Start
+            close(fd01[PIPE_READ]);
+          }
+          /**************************Client Creation**************************/
+
+      }
+    }
 }
 
 /*
@@ -535,15 +695,15 @@ int load_net_data_file() {
                   // char *cp;
                   g_net_link[i].type = SOCKET;
                   g_net_link[i].pipe_node0 = node0;
-                  g_net_link[i].dom_node0 = strtok(sockStr," ");
-                  g_net_link[i].port_node0 = atoi(strtok(NULL," "));
-                  g_net_link[i].pipe_node1 = node0+127; // Regular Host IDs are 0-127
-                  g_net_link[i].dom_node1 = strtok(NULL," ");
-                  g_net_link[i].port_node1 = atoi(strtok(NULL," "));
-                  // printf("link dom0: %s\n",g_net_link[i].dom_node0);
-                  // printf("link port0: %d\n",g_net_link[i].port_node0);
-                  // printf("link dom1: %s\n",g_net_link[i].dom_node1);
-                  // printf("link port1: %d\n",g_net_link[i].port_node1);
+                  g_net_link[i].internal_node_dom = strtok(sockStr," ");
+                  g_net_link[i].internal_port = strtok(NULL," ");
+                  g_net_link[i].pipe_node1 = node0+MAX_HOSTS; // Regular Host IDs are 0-127
+                  g_net_link[i].external_node_dom = strtok(NULL," ");
+                  g_net_link[i].external_port = strtok(NULL," ");
+                  // printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
+                  // printf("link port0: %d\n",g_net_link[i].internal_port);
+                  // printf("link dom1: %s\n",g_net_link[i].external_node_dom);
+                  // printf("link port1: %d\n",g_net_link[i].external_port);
                 }
 
             } else {
