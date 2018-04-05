@@ -674,7 +674,7 @@ int load_net_data_file() {
     fscanf(fp, " %d ", &link_num);
     printf("Number of links = %d\n", link_num);
     g_net_link_num = link_num;
-    g_net_link_num_add = 0;
+    int g_net_link_num_add = 0;
 
     if (link_num < 1) {
         printf("net.c: No links\n");
