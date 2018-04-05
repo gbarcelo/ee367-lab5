@@ -587,7 +587,9 @@ void create_port_list() {
             close(fd01[PIPE_READ]);
           }
           /**************************Client Creation**************************/
-
+          p0->next = p1; /* Insert ports in linked lisst */
+          p1->next = g_port_list;
+          g_port_list = p0;
       }
     }
 }
