@@ -497,7 +497,7 @@ void create_port_list() {
             while(1){
               // Accept a connection -- we now have a client to communicate with
               client_socket = accept(server_socket, NULL, NULL);
-              while( (inbound_size = recv(client_socket , server_message , sizeof(server_message)-1 , 0)) > 0 ) {
+              while( (inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0)) > 0 ) {
                 write(fd10[PIPE_WRITE], server_message, sizeof(server_message)-1);
               }
               memset(server_message, 0, sizeof(server_message));
@@ -572,7 +572,7 @@ void create_port_list() {
               // IF RECV is not empty, WRITE TO PIPE
               // Recieve data from the server_address
               // if (recv(network_socket, &server_response, sizeof(server_response), 0)>0){
-              while( (inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message)-1)) > 0 ) {
+              while( (inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message))) > 0 ) {
                 send(network_socket, client_message, sizeof(client_message)-1, 0);
               }
               memset(client_message, 0, sizeof(client_message));
