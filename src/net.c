@@ -440,7 +440,7 @@ void create_port_list() {
         	hintss.ai_family = AF_UNSPEC;
         	hintss.ai_socktype = SOCK_STREAM;
         	hintss.ai_flags = AI_PASSIVE; // use my IP
-          if ((rvs = getaddrinfo(g_net_link[i].internal_node_dom, g_net_link[i].internal_port, &hintss, &servinfos)) != 0) {
+          if ((rvs = getaddrinfo(NULL, g_net_link[i].internal_port, &hintss, &servinfos)) != 0) {
         		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rvs));
         		return 1;
         	}
@@ -701,9 +701,9 @@ int load_net_data_file() {
                   g_net_link[i].external_node_dom = strtok(NULL," ");
                   g_net_link[i].external_port = strtok(NULL," ");
                   printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
-                  printf("link port0: %d\n",g_net_link[i].internal_port);
+                  printf("link port0: %s\n",g_net_link[i].internal_port);
                   printf("link dom1: %s\n",g_net_link[i].external_node_dom);
-                  printf("link port1: %d\n",g_net_link[i].external_port);
+                  printf("link port1: %s\n",g_net_link[i].external_port);
                 }
 
             } else {
