@@ -497,9 +497,10 @@ void create_port_list() {
             while(1){
               // Accept a connection -- we now have a client to communicate with
               client_socket = accept(server_socket, NULL, NULL);
-              while( (inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0)) > 0 ) {
-
+              while( (inbound_size) > 0 ) {
+                inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0);
               }
+              if (inbound_size < 0) {perror("recv failed"); return 1;}
               write(fd10[PIPE_WRITE], server_message, sizeof(server_message));
               memset(server_message, 0, sizeof(server_message));
             }
@@ -573,9 +574,11 @@ void create_port_list() {
               // IF RECV is not empty, WRITE TO PIPE
               // Recieve data from the server_address
               // if (recv(network_socket, &server_response, sizeof(server_response), 0)>0){
-              while( (inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message))) > 0 ) {
-                send(network_socket, client_message, sizeof(client_message), 0);
+              while( (inbound_size) > 0 ) {
+                inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message));
               }
+              if (inbound_size < 0) {perror("read failed"); return 1;}
+              send(network_socket, client_message, sizeof(client_message), 0);
               memset(client_message, 0, sizeof(client_message));
               // } end if(recv...)
             }
@@ -674,7 +677,6 @@ int load_net_data_file() {
     fscanf(fp, " %d ", &link_num);
     printf("Number of links = %d\n", link_num);
     g_net_link_num = link_num;
-    int g_net_link_num_add = 0;
 
     if (link_num < 1) {
         printf("net.c: No links\n");
@@ -699,8 +701,7 @@ int load_net_data_file() {
                   g_net_link[i].pipe_node0 = node0;
                   g_net_link[i].internal_node_dom = strtok(sockStr," ");
                   g_net_link[i].internal_port = strtok(NULL," ");
-                  g_net_link[i].pipe_node1 = node0+g_net_link_num; // Regular Host IDs are 0-127
-                  g_net_link_num_add++;
+                  g_net_link[i].pipe_node1 = node0+MAX_HOSTS; // Regular Host IDs are 0-127
                   g_net_link[i].external_node_dom = strtok(NULL," ");
                   g_net_link[i].external_port = strtok(NULL," ");
                   printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
@@ -714,7 +715,6 @@ int load_net_data_file() {
             }
 
         }
-        g_net_link_num += g_net_link_num_add;
     }
 
 /* Display the nodes and links of the network */
