@@ -713,19 +713,19 @@ int load_net_data_file() {
                   g_net_link[i].pipe_node0 = node0;
 
                   g_net_link[i].internal_node_dom = malloc(MAX_DOM_SIZE);
-                  g_net_link[i].internal_node_dom = strtok(sockStr," ");
+                  strcpy(g_net_link[i].internal_node_dom, strtok(sockStr," "));
 
                   g_net_link[i].internal_port = malloc(MAX_PORT_SIZE);
-                  g_net_link[i].internal_port = strtok(NULL," ");
+                  strcpy(g_net_link[i].internal_port, strtok(NULL," "));
 
                   g_net_link[i].pipe_node1 = node0+MAX_HOSTS; // Regular Host IDs are 0-127
 
                   g_net_link[i].external_node_dom = malloc(MAX_DOM_SIZE);
-                  g_net_link[i].external_node_dom = strtok(NULL," ");
+                  strcpy(g_net_link[i].external_node_dom, strtok(NULL," "));
 
                   g_net_link[i].external_port = malloc(MAX_PORT_SIZE);
-                  g_net_link[i].external_port = strtok(NULL," ");
-                  
+                  strcpy(g_net_link[i].external_port, strtok(NULL," "));
+
                   printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
                   printf("link port0: %s\n",g_net_link[i].internal_port);
                   printf("link dom1: %s\n",g_net_link[i].external_node_dom);
