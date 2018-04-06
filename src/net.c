@@ -537,6 +537,8 @@ void create_port_list() {
             printf("link dom1: %s\n",g_net_link[i].external_node_dom);
             printf("link port1: %s\n",g_net_link[i].external_port);
 
+            p = NULL;
+            while(p==NULL){
           	if ((rvc = getaddrinfo(g_net_link[i].external_node_dom, g_net_link[i].external_port, &hintsc, &servinfoc)) != 0) {
           		fprintf(stderr, "client getaddrinfo: %s\n", gai_strerror(rvc));
           		return 1;
@@ -563,8 +565,9 @@ void create_port_list() {
 
           	if (p == NULL) {
           		fprintf(stderr, "client: failed to connect\n");
-          		return 2;
+          		// return 2;
           	}
+          }
 
           	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
           			s, sizeof s);
