@@ -441,7 +441,7 @@ void create_port_list() {
         	hintss.ai_socktype = SOCK_STREAM;
         	hintss.ai_flags = AI_PASSIVE; // use my IP
           if ((rvs = getaddrinfo(NULL, g_net_link[i].internal_port, &hintss, &servinfos)) != 0) {
-        		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rvs));
+        		fprintf(stderr, "server getaddrinfo: %s\n", gai_strerror(rvs));
         		return 1;
         	}
 
@@ -495,6 +495,7 @@ void create_port_list() {
             int client_socket;
             char server_message[MAX_BUF_SIZE];
             while(1){
+              puts("server while loop");
               // Accept a connection -- we now have a client to communicate with
               client_socket = accept(server_socket, NULL, NULL);
               while( (inbound_size) > 0 ) {
@@ -529,7 +530,7 @@ void create_port_list() {
           	hintsc.ai_socktype = SOCK_STREAM;
 
           	if ((rvc = getaddrinfo(g_net_link[i].external_node_dom, g_net_link[i].external_port, &hintsc, &servinfoc)) != 0) {
-          		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rvc));
+          		fprintf(stderr, "client getaddrinfo: %s\n", gai_strerror(rvc));
           		return 1;
           	}
 
