@@ -41,6 +41,8 @@
 #define MAX_HOSTS 127 // Maximum number of hosts
 #define BACKLOG 5
 #define MAX_BUF_SIZE 256
+#define MAX_DOM_SIZE 80
+#define MAX_PORT_SIZE 10
 
 enum bool {
     FALSE, TRUE
@@ -709,15 +711,21 @@ int load_net_data_file() {
                   int toksize;
                   g_net_link[i].type = SOCKET;
                   g_net_link[i].pipe_node0 = node0;
+
+                  g_net_link[i].internal_node_dom = malloc(MAX_DOM_SIZE);
                   g_net_link[i].internal_node_dom = strtok(sockStr," ");
+
+                  g_net_link[i].internal_port = malloc(MAX_PORT_SIZE);
                   g_net_link[i].internal_port = strtok(NULL," ");
+
                   g_net_link[i].pipe_node1 = node0+MAX_HOSTS; // Regular Host IDs are 0-127
-                  toksize = sizeof(g_net_link[i].external_node_dom = strtok(sockStr," "));
-                  g_net_link[i].external_node_dom = malloc(toksize);
-                  // g_net_link[i].external_node_dom = strtok(NULL," ");
-                  toksize = sizeof(g_net_link[i].external_port = strtok(sockStr," "));
-                  g_net_link[i].external_port = malloc(toksize);
-                  // g_net_link[i].external_port = strtok(NULL," ");
+
+                  g_net_link[i].external_node_dom = malloc(MAX_DOM_SIZE);
+                  g_net_link[i].external_node_dom = strtok(NULL," ");
+
+                  g_net_link[i].external_port = malloc(MAX_PORT_SIZE);
+                  g_net_link[i].external_port = strtok(NULL," ");
+                  
                   printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
                   printf("link port0: %s\n",g_net_link[i].internal_port);
                   printf("link dom1: %s\n",g_net_link[i].external_node_dom);
