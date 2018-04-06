@@ -495,7 +495,7 @@ void create_port_list() {
             int client_socket;
             char server_message[MAX_BUF_SIZE];
             while(1){
-              puts("server while loop");
+              // puts("server while loop");
               // Accept a connection -- we now have a client to communicate with
               client_socket = accept(server_socket, NULL, NULL);
               while( (inbound_size) > 0 ) {
@@ -528,6 +528,12 @@ void create_port_list() {
             memset(&hintsc, 0, sizeof hintsc);
           	hintsc.ai_family = AF_UNSPEC;
           	hintsc.ai_socktype = SOCK_STREAM;
+
+            printf("LINK INFO BEFORE CLIENT GETADDRINFO\n");
+            printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
+            printf("link port0: %s\n",g_net_link[i].internal_port);
+            printf("link dom1: %s\n",g_net_link[i].external_node_dom);
+            printf("link port1: %s\n",g_net_link[i].external_port);
 
           	if ((rvc = getaddrinfo(g_net_link[i].external_node_dom, g_net_link[i].external_port, &hintsc, &servinfoc)) != 0) {
           		fprintf(stderr, "client getaddrinfo: %s\n", gai_strerror(rvc));
