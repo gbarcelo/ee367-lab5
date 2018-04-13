@@ -431,71 +431,73 @@ void create_port_list() {
       } else if (g_net_link[i].type == SOCKET) {
           // Node1 represents socket/client
 
-          /**************************Server Creation**************************/
-          int server_socket;
 
-          // =================== from lab 3 ===================
-          int rvs;
-          int yes=1;
-          struct addrinfo hintss, *servinfos, *p;
-          memset(&hintss, 0, sizeof hintss);
-        	hintss.ai_family = AF_UNSPEC;
-        	hintss.ai_socktype = SOCK_STREAM;
-        	hintss.ai_flags = AI_PASSIVE; // use my IP
-          if ((rvs = getaddrinfo(NULL, g_net_link[i].internal_port, &hintss, &servinfos)) != 0) {
-        		fprintf(stderr, "server getaddrinfo: %s\n", gai_strerror(rvs));
-        		return 1;
-        	}
-
-          // loop through all the results and bind to the first we can
-        	for(p = servinfos; p != NULL; p = p->ai_next) {
-            // Create server socket
-        		if ((server_socket = socket(p->ai_family, p->ai_socktype,
-        				p->ai_protocol)) == -1) {
-        			perror("server: socket");
-        			continue;
-        		}
-
-            // Making socket nonblocking
-            int flags = fcntl(server_socket, F_GETFL, 0);   /* get socket's flags */
-            flags |= O_NONBLOCK;  /* Add O_NONBLOCK status to socket descriptor's flags */
-            int status = fcntl(server_socket, F_SETFL, flags); /* Apply the new flags to the socket */
-
-        		if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes,
-        				sizeof(int)) == -1) {
-        			perror("setsockopt");
-        			exit(1);
-        		}
-
-            // Bind the socket to specified IP and PORT
-        		if (bind(server_socket, p->ai_addr, p->ai_addrlen) == -1) {
-        			close(server_socket);
-        			perror("server: bind");
-        			continue;
-        		}
-
-        		break;
-        	}
-
-        	if (p == NULL)  {
-        		fprintf(stderr, "server: failed to bind\n");
-        		return 2;
-        	}
-
-        	freeaddrinfo(servinfos); // all done with this structure
-          // =================== from lab 3 ===================
-
-          // Start listening on socket for up to BACKLOG # of connections
-          listen(server_socket, BACKLOG);
-
-          // Any while loops would start here, before accept and after listen
           if(!fork()) { // Begin Child Process (Server)
             close(fd10[PIPE_READ]);
             close(fd01[PIPE_READ]);
             close(fd01[PIPE_WRITE]);
+            /**************************Server Creation**************************/
+            int server_socket;
+
+            // =================== from lab 3 ===================
+            int rvs;
+            int yes=1;
+            struct addrinfo hintss, *servinfos, *p;
+            memset(&hintss, 0, sizeof hintss);
+          	hintss.ai_family = AF_UNSPEC;
+          	hintss.ai_socktype = SOCK_STREAM;
+          	hintss.ai_flags = AI_PASSIVE; // use my IP
+            if ((rvs = getaddrinfo(NULL, g_net_link[i].internal_port, &hintss, &servinfos)) != 0) {
+          		fprintf(stderr, "server getaddrinfo: %s\n", gai_strerror(rvs));
+          		return 1;
+          	}
+
+            // loop through all the results and bind to the first we can
+          	for(p = servinfos; p != NULL; p = p->ai_next) {
+              // Create server socket
+          		if ((server_socket = socket(p->ai_family, p->ai_socktype,
+          				p->ai_protocol)) == -1) {
+          			perror("server: socket");
+          			continue;
+          		}
+
+              // Making socket nonblocking
+              int flags = fcntl(server_socket, F_GETFL, 0);   /* get socket's flags */
+              flags |= O_NONBLOCK;  /* Add O_NONBLOCK status to socket descriptor's flags */
+              int status = fcntl(server_socket, F_SETFL, flags); /* Apply the new flags to the socket */
+
+          		if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes,
+          				sizeof(int)) == -1) {
+          			perror("setsockopt");
+          			exit(1);
+          		}
+
+              // Bind the socket to specified IP and PORT
+          		if (bind(server_socket, p->ai_addr, p->ai_addrlen) == -1) {
+          			close(server_socket);
+          			perror("server: bind");
+          			continue;
+          		}
+
+          		break;
+          	}
+
+          	if (p == NULL)  {
+          		fprintf(stderr, "server: failed to bind\n");
+          		return 2;
+          	}
+
+          	freeaddrinfo(servinfos); // all done with this structure
+            // =================== from lab 3 ===================
+
+            // Start listening on socket for up to BACKLOG # of connections
+            listen(server_socket, BACKLOG);
+
             int inbound_size;
             int client_socket;
             char server_message[MAX_BUF_SIZE];
+            
+            // Any while loops would start here, before accept and after listen
             while(1){
               // puts("server while loop");
               // Accept a connection -- we now have a client to communicate with
@@ -507,10 +509,11 @@ void create_port_list() {
               write(fd10[PIPE_WRITE], server_message, sizeof(server_message));
               memset(server_message, 0, sizeof(server_message));
             }
+            close(server_socket);
           } else {  // Begin Parent Process
             close(fd10[PIPE_WRITE]);
             // Parent doesn't need socket
-            close(server_socket);
+
           }
           /**************************Server Creation**************************/
 
