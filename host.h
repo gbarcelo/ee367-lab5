@@ -1,15 +1,17 @@
-/* 
- * host.h 
+/*
+ * host.h
  */
 
 enum host_job_type {
 	JOB_SEND_PKT_ALL_PORTS,
-	JOB_PING_SEND_REQ,	
+	JOB_PING_SEND_REQ,
 	JOB_PING_SEND_REPLY,
 	JOB_PING_WAIT_FOR_REPLY,
 	JOB_FILE_UPLOAD_SEND,
 	JOB_FILE_UPLOAD_RECV_START,
-	JOB_FILE_UPLOAD_RECV_END
+	JOB_FILE_UPLOAD_RECV_END,
+	JOB_FILE_DOWNLOAD_SEND,//Begin New Job Types
+	JOB_FILE_UPLOAD_RECV_IMD
 };
 
 struct host_job {
@@ -32,5 +34,3 @@ struct job_queue {
 };
 
 void host_main(int host_id);
-
-
