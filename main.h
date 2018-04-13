@@ -46,7 +46,7 @@ struct packet { /* struct for a packet */
 #define PKT_FILE_UPLOAD_END	3
 #define PKT_FILE_UPLOAD_IMD	4
 #define PKT_FILE_DOWNLOAD_REQ 5
-#define PKT_DNS_REG 6
-#define PKT_DNS_REG_REPLY 7
-#define PKT_DNS_REQ 8
-#define PKT_DNS_REQ_REPLY 9
+#define PKT_DNS_REG 6 //for registering a domain name
+#define PKT_DNS_REG_REPLY 7//server relying to ^
+#define PKT_DNS_REQ 8 //for requesting the domain name of a host
+#define PKT_DNS_REQ_REPLY 9 //server replying to ^
