@@ -24,8 +24,8 @@
 
 #define _GNU_SOURCE
 
-#include <fcntl.h>
-#include <unistd.h>
+#include <sys/fcntl.h>
+#include <sys/unistd.h>
 
 #include "main.h"
 #include "man.h"
@@ -496,7 +496,7 @@ void create_port_list() {
             int inbound_size;
             int client_socket;
             char server_message[MAX_BUF_SIZE];
-            
+
             // Any while loops would start here, before accept and after listen
             while(1){
               // puts("server while loop");
@@ -520,7 +520,7 @@ void create_port_list() {
           /**************************Client Creation**************************/
           if(!fork()){  // Child Process Start (Client)
             close(fd10[PIPE_READ]);
-            close(fd10[PIPE_WRITE]);
+            //close(fd10[PIPE_WRITE]);
             close(fd01[PIPE_WRITE]);
 
             int network_socket;
@@ -529,6 +529,7 @@ void create_port_list() {
             struct addrinfo hintsc, *servinfoc, *p;
           	int rvc;
           	char s[INET6_ADDRSTRLEN];
+            servinfoc = NULL;
 
             memset(&hintsc, 0, sizeof hintsc);
           	hintsc.ai_family = AF_UNSPEC;
@@ -542,35 +543,35 @@ void create_port_list() {
 
             p = NULL;
             while(p==NULL){
-          	if ((rvc = getaddrinfo(g_net_link[i].external_node_dom, g_net_link[i].external_port, &hintsc, &servinfoc)) != 0) {
-          		fprintf(stderr, "client getaddrinfo: %s\n", gai_strerror(rvc));
-          		return 1;
-          	}
+            	if ((rvc = getaddrinfo(g_net_link[i].external_node_dom, g_net_link[i].external_port, &hintsc, &servinfoc)) != 0) {
+            		fprintf(stderr, "client getaddrinfo: %s\n", gai_strerror(rvc));
+            		return 1;
+            	}
 
-            // Keep attempting to connect
-            // loop through all the results and connect to the first we can
-          	for(p = servinfoc; p != NULL; p = p->ai_next) {
-              // Create a socket
-          		if ((network_socket = socket(p->ai_family, p->ai_socktype,
-          				p->ai_protocol)) == -1) {
-          			perror("client: socket");
-          			continue;
-          		}
+              // Keep attempting to connect
+              // loop through all the results and connect to the first we can
+            	for(p = servinfoc; p != NULL; p = p->ai_next) {
+                // Create a socket
+            		if ((network_socket = socket(p->ai_family, p->ai_socktype,
+            				p->ai_protocol)) == -1) {
+            			perror("client: socket");
+            			continue;
+            		}
 
-          		if (connect(network_socket, p->ai_addr, p->ai_addrlen) == -1) {
-          			close(network_socket);
-          			perror("client: connect");
-          			continue;
-          		}
+            		if (connect(network_socket, p->ai_addr, p->ai_addrlen) == -1) {
+            			close(network_socket);
+            			perror("client: connect");
+            			continue;
+            		}
 
-          		break;
-          	}
+            		break;
+            	}
 
-          	if (p == NULL) {
-          		fprintf(stderr, "client: failed to connect\n");
-          		// return 2;
-          	}
-          }
+            	if (p == NULL) {
+            		fprintf(stderr, "client: failed to connect\n");
+            		// return 2;
+            	}
+            }
 
           	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
           			s, sizeof s);
