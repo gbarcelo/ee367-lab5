@@ -43,6 +43,9 @@
 #define MAX_BUF_SIZE 256
 #define MAX_DOM_SIZE 80
 #define MAX_PORT_SIZE 10
+#define TEMP_DOMAIN "localhost"
+#define TEMP_PORT "9001"
+#define TEMP_PORT2 "9002"
 
 enum bool {
     FALSE, TRUE
@@ -57,9 +60,9 @@ struct net_link {
     enum NetLinkType type;
     int pipe_node0;
     int pipe_node1;
-    char *internal_node_dom;
+    const char *internal_node_dom;
     char *internal_port;
-    char *external_node_dom;
+    const char *external_node_dom;
     char *external_port;
 };
 
@@ -429,13 +432,19 @@ void create_port_list() {
             g_port_list = p0;
 
       } else if (g_net_link[i].type == SOCKET) {
+          // FILE *file_ptr = fopen("debugfork.log", "w");
+          // fprintf(file_ptr, "server create log file\n");
+          // fprintf("server create log file\n");
           // Node1 represents socket/client
 
 
           if(!fork()) { // Begin Child Process (Server)
+            // puts("server fork start");
+            // fprintf(stderr, "stderr print test\n");
             close(fd10[PIPE_READ]);
             close(fd01[PIPE_READ]);
             close(fd01[PIPE_WRITE]);
+            // puts("server fork close FDs");
             /**************************Server Creation**************************/
             int server_socket;
 
@@ -447,11 +456,12 @@ void create_port_list() {
           	hintss.ai_family = AF_UNSPEC;
           	hintss.ai_socktype = SOCK_STREAM;
           	hintss.ai_flags = AI_PASSIVE; // use my IP
-            if ((rvs = getaddrinfo(NULL, *(g_net_link[i].internal_port), &hintss, &servinfos)) != 0) {
+            // puts("server fork getting addr info");
+            if ((rvs = getaddrinfo(NULL, g_net_link[i].internal_port, &hintss, &servinfos)) != 0) {
           		fprintf(stderr, "server getaddrinfo: %s\n", gai_strerror(rvs));
           		return 1;
           	}
-
+            // puts("server fork got addrinfo");
             // loop through all the results and bind to the first we can
           	for(p = servinfos; p != NULL; p = p->ai_next) {
               // Create server socket
@@ -461,6 +471,7 @@ void create_port_list() {
           			continue;
           		}
 
+              // puts("server fork changing to nonblocking");
               // Making socket nonblocking
               int flags = fcntl(server_socket, F_GETFL, 0);   /* get socket's flags */
               flags |= O_NONBLOCK;  /* Add O_NONBLOCK status to socket descriptor's flags */
@@ -492,13 +503,14 @@ void create_port_list() {
 
             // Start listening on socket for up to BACKLOG # of connections
             listen(server_socket, BACKLOG);
-
             int inbound_size;
             int client_socket;
             char server_message[MAX_BUF_SIZE];
 
+
             // Any while loops would start here, before accept and after listen
             while(1){
+              //fprintf(file_ptr, "server while loop\n");
               // puts("server while loop");
               // Accept a connection -- we now have a client to communicate with
               client_socket = accept(server_socket, NULL, NULL);
@@ -509,16 +521,18 @@ void create_port_list() {
               write(fd10[PIPE_WRITE], server_message, sizeof(server_message));
               memset(server_message, 0, sizeof(server_message));
             }
+            // fclose(file_ptr);
             close(server_socket);
           } else {  // Begin Parent Process
             close(fd10[PIPE_WRITE]);
             // Parent doesn't need socket
-
+            // fclose(file_ptr);
           }
           /**************************Server Creation**************************/
 
           /**************************Client Creation**************************/
           if(!fork()){  // Child Process Start (Client)
+            // puts("client fork start");
             close(fd10[PIPE_READ]);
             //close(fd10[PIPE_WRITE]);
             close(fd01[PIPE_WRITE]);
@@ -535,18 +549,25 @@ void create_port_list() {
           	hintsc.ai_family = AF_UNSPEC;
           	hintsc.ai_socktype = SOCK_STREAM;
 
-            printf("LINK INFO BEFORE CLIENT GETADDRINFO\n");
-            printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
-            printf("link port0: %s\n",g_net_link[i].internal_port);
-            printf("link dom1: %s\n",g_net_link[i].external_node_dom);
-            printf("link port1: %s\n",g_net_link[i].external_port);
+            // printf("LINK INFO BEFORE CLIENT GETADDRINFO\n");
+            // printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
+            // printf("link port0: %s\n",g_net_link[i].internal_port);
+            // printf("link dom1: %s\n",g_net_link[i].external_node_dom);
+            // printf("link port1: %s\n",g_net_link[i].external_port);
+            // const char *teststring = g_net_link[i].external_node_dom;
+            // printf("teststring printout %s\n", teststring);
+            // puts("teststring printed");
+
 
             p = NULL;
             while(p==NULL){
-            	if ((rvc = getaddrinfo(*(g_net_link[i].external_node_dom), *(g_net_link[i].external_port), &hintsc, &servinfoc)) != 0) {
+              // puts("client fork coneection loop start");
+            	if ((rvc = getaddrinfo(g_net_link[i].external_node_dom, g_net_link[i].external_port, &hintsc, &servinfoc)) != 0) {
             		fprintf(stderr, "client getaddrinfo: %s\n", gai_strerror(rvc));
+                puts("client fork getaddrinfo failed");
             		return 1;
             	}
+              // puts("client fork got addrinfo");
 
               // Keep attempting to connect
               // loop through all the results and connect to the first we can
@@ -560,15 +581,15 @@ void create_port_list() {
 
             		if (connect(network_socket, p->ai_addr, p->ai_addrlen) == -1) {
             			close(network_socket);
-            			perror("client: connect");
+            			// perror("client: connect");
             			continue;
             		}
 
             		break;
             	}
-
+              // puts("client fork got socket and connect");
             	if (p == NULL) {
-            		fprintf(stderr, "client: failed to connect\n");
+            		// fprintf(stderr, "client: failed to connect\n");
             		// return 2;
             	}
             }
@@ -584,7 +605,9 @@ void create_port_list() {
             // Buffer to recieve data from server_address
             char client_message[MAX_BUF_SIZE];
             int inbound_size;
+            // puts("client while loop starting ==========================");
             while(1){
+
               // TODO:
               // READ pipe and if not empty, do a send
               // IF RECV is not empty, WRITE TO PIPE
@@ -729,14 +752,15 @@ int load_net_data_file() {
 
                   g_net_link[i].external_node_dom = malloc(MAX_DOM_SIZE);
                   strcpy(g_net_link[i].external_node_dom, strtok(NULL," "));
-
+                  char delimit[]=" \t\r\n\v\f";
                   g_net_link[i].external_port = malloc(MAX_PORT_SIZE);
-                  strcpy(g_net_link[i].external_port, strtok(NULL," "));
+                  strcpy(g_net_link[i].external_port, strtok(NULL,delimit));
 
-                  printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
-                  printf("link port0: %s\n",g_net_link[i].internal_port);
-                  printf("link dom1: %s\n",g_net_link[i].external_node_dom);
-                  printf("link port1: %s\n",g_net_link[i].external_port);
+                  // printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
+                  // printf("link port0: %s\n",g_net_link[i].internal_port);
+                  // printf("link dom1: %s\n",g_net_link[i].external_node_dom);
+                  // printf("link port1: %s\n",g_net_link[i].external_port);
+                  // g_net_link[i].external_node_dom = TEMP_DOMAIN;
                 }
 
             } else {

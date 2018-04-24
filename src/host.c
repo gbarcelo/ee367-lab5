@@ -48,8 +48,8 @@ void file_buf_init(struct file_buf *f) {
     f->name_length = 0;
 }
 
-/* 
- * Get the file name in the file buffer and store it in name 
+/*
+ * Get the file name in the file buffer and store it in name
  * Terminate the string in name with tne null character
  */
 void file_buf_get_name(struct file_buf *f, char name[]) {
@@ -90,7 +90,7 @@ int file_buf_add(struct file_buf *f, char string[], int length) {
 }
 
 /*
- *  Remove bytes from the file buffer and store it in string[] 
+ *  Remove bytes from the file buffer and store it in string[]
  *  The number of bytes is length.
  */
 int file_buf_remove(struct file_buf *f, char string[], int length) {
@@ -195,7 +195,7 @@ int job_q_num(struct job_queue *j_q) {
 }
 
 /*
- *  Main 
+ *  Main
  */
 
 void host_main(int host_id) {
@@ -238,7 +238,7 @@ void host_main(int host_id) {
     file_buf_init(&f_buf_download);
 
 /*
- * Initialize pipes 
+ * Initialize pipes
  * Get link port to the manager
  */
 
@@ -312,7 +312,7 @@ void host_main(int host_id) {
                             malloc(sizeof(struct host_job));
                     ping_reply_received = 0;
                     new_job2->type = JOB_PING_WAIT_FOR_REPLY;
-                    new_job2->ping_timer = 10;
+                    new_job2->ping_timer = 100; // GLEN DEBUG TODO - used to be 10
                     job_q_add(&job_q, new_job2);
 
                     break;
@@ -632,7 +632,3 @@ void host_main(int host_id) {
     } /* End of while loop */
 
 }
-
-
-
-
