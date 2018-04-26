@@ -439,96 +439,7 @@ void create_port_list() {
 
 
           if(!fork()) { // Begin Child Process (Server)
-            // puts("server fork start");
-            // fprintf(stderr, "stderr print test\n");
-            close(fd10[PIPE_READ]);
-            close(fd01[PIPE_READ]);
-            close(fd01[PIPE_WRITE]);
-            // puts("server fork close FDs");
-            /**************************Server Creation**************************/
-            int server_socket;
-
-            // =================== from lab 3 ===================
-            int rvs;
-            int yes=1;
-            struct addrinfo hintss, *servinfos, *p;
-            memset(&hintss, 0, sizeof hintss);
-          	hintss.ai_family = AF_UNSPEC;
-          	hintss.ai_socktype = SOCK_STREAM;
-          	hintss.ai_flags = AI_PASSIVE; // use my IP
-            // puts("server fork getting addr info");
-            if ((rvs = getaddrinfo(NULL, g_net_link[i].internal_port, &hintss, &servinfos)) != 0) {
-          		fprintf(stderr, "server getaddrinfo: %s\n", gai_strerror(rvs));
-          		return 1;
-          	}
-            // puts("server fork got addrinfo");
-            // loop through all the results and bind to the first we can
-          	for(p = servinfos; p != NULL; p = p->ai_next) {
-              // Create server socket
-          		if ((server_socket = socket(p->ai_family, p->ai_socktype,
-          				p->ai_protocol)) == -1) {
-          			perror("server: socket");
-          			continue;
-          		}
-
-              // puts("server fork changing to nonblocking");
-              // Making socket nonblocking
-              int flags = fcntl(server_socket, F_GETFL, 0);   /* get socket's flags */
-              flags |= O_NONBLOCK;  /* Add O_NONBLOCK status to socket descriptor's flags */
-              int status = fcntl(server_socket, F_SETFL, flags); /* Apply the new flags to the socket */
-
-          		if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes,
-          				sizeof(int)) == -1) {
-          			perror("setsockopt");
-          			exit(1);
-          		}
-
-              // Bind the socket to specified IP and PORT
-          		if (bind(server_socket, p->ai_addr, p->ai_addrlen) == -1) {
-          			close(server_socket);
-          			perror("server: bind");
-          			continue;
-          		}
-
-          		break;
-          	}
-
-          	if (p == NULL)  {
-          		fprintf(stderr, "server: failed to bind\n");
-          		return 2;
-          	}
-
-          	freeaddrinfo(servinfos); // all done with this structure
-            // =================== from lab 3 ===================
-
-            // Start listening on socket for up to BACKLOG # of connections
-            listen(server_socket, BACKLOG);
-            int inbound_size;
-            int client_socket;
-            char server_message[MAX_BUF_SIZE];
-
-
-            // Any while loops would start here, before accept and after listen
-            while(1){
-              //fprintf(file_ptr, "server while loop\n");
-              // puts("server while loop");
-              // Accept a connection -- we now have a client to communicate with
-              // client_socket = accept(server_socket, NULL, NULL);
-              if ((client_socket = accept(server_socket, NULL, NULL)) > 0){
-                while(client_socket > 0){
-                  while( (inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0)) > 0 ) {
-                    // inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0);
-                    write(fd10[PIPE_WRITE], server_message, sizeof(server_message));
-                    memset(server_message, 0, sizeof(server_message));
-                  }
-                  // if (inbound_size < 0) {perror("recv failed"); return 1;}
-
-                }
-                close(client_socket);
-              }
-            }
-            // fclose(file_ptr);
-            close(server_socket);
+            create_server(g_net_link[i], fd10, fd01);
           } else {  // Begin Parent Process
             close(fd10[PIPE_WRITE]); // Close write-end that belongs to server
             // Parent doesn't need socket
@@ -538,99 +449,7 @@ void create_port_list() {
 
           /**************************Client Creation**************************/
           if(!fork()){  // Child Process Start (Client)
-            // puts("client fork start");
-            close(fd10[PIPE_READ]);
-            close(fd10[PIPE_WRITE]); // Supposed to be closed by previous parent
-            close(fd01[PIPE_WRITE]);
-
-            int network_socket;
-
-            // =================== from lab 3 ===================
-            struct addrinfo hintsc, *servinfoc, *p;
-          	int rvc;
-          	char s[INET6_ADDRSTRLEN];
-            servinfoc = NULL;
-
-            memset(&hintsc, 0, sizeof hintsc);
-          	hintsc.ai_family = AF_UNSPEC;
-          	hintsc.ai_socktype = SOCK_STREAM;
-
-            // printf("LINK INFO BEFORE CLIENT GETADDRINFO\n");
-            // printf("link dom0: %s\n",g_net_link[i].internal_node_dom);
-            // printf("link port0: %s\n",g_net_link[i].internal_port);
-            // printf("link dom1: %s\n",g_net_link[i].external_node_dom);
-            // printf("link port1: %s\n",g_net_link[i].external_port);
-            // const char *teststring = g_net_link[i].external_node_dom;
-            // printf("teststring printout %s\n", teststring);
-            // puts("teststring printed");
-
-
-            p = NULL;
-            while(p==NULL){
-              // puts("client fork coneection loop start");
-            	if ((rvc = getaddrinfo(g_net_link[i].external_node_dom, g_net_link[i].external_port, &hintsc, &servinfoc)) != 0) {
-            		fprintf(stderr, "client getaddrinfo: %s\n", gai_strerror(rvc));
-                puts("client fork getaddrinfo failed");
-            		return 1;
-            	}
-              // puts("client fork got addrinfo");
-
-              // Keep attempting to connect
-              // loop through all the results and connect to the first we can
-            	for(p = servinfoc; p != NULL; p = p->ai_next) {
-                // Create a socket
-            		if ((network_socket = socket(p->ai_family, p->ai_socktype,
-            				p->ai_protocol)) == -1) {
-            			perror("client: socket");
-            			continue;
-            		}
-
-            		if (connect(network_socket, p->ai_addr, p->ai_addrlen) == -1) {
-            			close(network_socket);
-            			// perror("client: connect");
-            			continue;
-            		}
-
-            		break;
-            	}
-              // puts("client fork got socket and connect");
-            	if (p == NULL) {
-            		// fprintf(stderr, "client: failed to connect\n");
-            		// return 2;
-            	}
-            }
-
-          	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
-          			s, sizeof s);
-          	printf("client: connecting to %s\n", s);
-
-          	freeaddrinfo(servinfoc); // all done with this structure
-            // =================== from lab 3 ===================
-
-            // While loop would start here
-            // Buffer to recieve data from server_address
-            char client_message[MAX_BUF_SIZE];
-            int inbound_size;
-            // puts("client while loop starting ==========================");
-            while(1){
-
-              // TODO:
-              // READ pipe and if not empty, do a send
-              // IF RECV is not empty, WRITE TO PIPE
-              // Recieve data from the server_address
-              // if (recv(network_socket, &server_response, sizeof(server_response), 0)>0){
-              // while( (inbound_size) > 0 ) {
-              if( (inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message))) > 0 ) {
-                // inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message));
-                send(network_socket, client_message, sizeof(client_message), 0);
-                memset(client_message, 0, sizeof(client_message));
-              }
-              // if (inbound_size < 0) {perror("read failed"); return 1;}
-              // send(network_socket, client_message, sizeof(client_message), 0);
-              // memset(client_message, 0, sizeof(client_message));
-              // } end if(recv...)
-            }
-            close(network_socket);
+            create_client(g_net_link[i], fd10, fd01);
           } else {  // Parent Process Start
             close(fd01[PIPE_READ]); // Close read-end belonging to client
           }
@@ -804,4 +623,217 @@ int load_net_data_file() {
 
     fclose(fp);
     return (1);
+}
+
+int create_server(struct net_link link, int fd10[], int fd01[]) {
+
+  char server_message[256] = "Glen: You have reached the server.";
+
+  // Create server socket
+  int server_socket;
+  // server_socket = socket(AF_INET, SOCK_STREAM, 0);
+  // int flags = fcntl(server_socket, F_GETFL, 0);   /* get socket's flags */
+  // flags |= O_NONBLOCK;  /* Add O_NONBLOCK status to socket descriptor's flags */
+  // int status = fcntl(server_socket, F_SETFL, flags); /* Apply the new flags to the socket */
+
+  // define the server address (basically, "localhost")
+  // struct sockaddr_in server_address;
+  // server_address.sin_family = AF_INET;
+  // server_address.sin_port = htons(PORT);
+  // server_address.sin_addr.s_addr = INADDR_ANY;
+
+  // =================== from lab 3 ===================
+  int rv;
+  int yes=1;
+  struct addrinfo hints, *servinfo, *p;
+  memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE; // use my IP
+  if ((rv = getaddrinfo(NULL, link.internal_port, &hints, &servinfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return 1;
+	}
+
+  // loop through all the results and bind to the first we can
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+		if ((server_socket = socket(p->ai_family, p->ai_socktype,
+				p->ai_protocol)) == -1) {
+			perror("server: socket");
+			continue;
+		}
+
+    // int flags = fcntl(server_socket, F_GETFL, 0);   /* get socket's flags */
+    // flags |= O_NONBLOCK;  /* Add O_NONBLOCK status to socket descriptor's flags */
+    // int status = fcntl(server_socket, F_SETFL, flags); /* Apply the new flags to the socket */
+
+		if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes,
+				sizeof(int)) == -1) {
+			perror("setsockopt");
+			exit(1);
+		}
+
+		if (bind(server_socket, p->ai_addr, p->ai_addrlen) == -1) {
+			close(server_socket);
+			perror("server: bind");
+			continue;
+		}
+
+		break;
+	}
+
+	if (p == NULL)  {
+		fprintf(stderr, "server: failed to bind\n");
+		return 2;
+	}
+
+	freeaddrinfo(servinfo); // all done with this structure
+  // =================== from lab 3 ===================
+
+  // Bind the socket to specified IP and PORT
+  // bind(server_socket, (struct sockaddr*) &server_address, sizeof(server_address));
+
+  // Start listening on socket for up to BACKLOG # of connections
+  listen(server_socket, BACKLOG);
+  // Any while loops would start here, before accept and after listen
+  // if(!fork()) { // Begin Child Process
+    // puts(status);
+    int i = 0;
+		while(1){
+      // Accept a connection -- we now have a client to communicate with
+			int inbound_size;
+      int client_socket;
+      // client_socket = accept(server_socket, NULL, NULL);
+      if ((client_socket = accept(server_socket, NULL, NULL)) > 0){
+				puts("server accepted client");
+        while(client_socket > 0){
+					while( (inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0)) > 0 ) {
+            // inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0);
+            write(fd10[PIPE_WRITE], server_message, sizeof(server_message));
+            memset(server_message, 0, sizeof(server_message));
+          }
+        }
+        close(client_socket);
+      }
+    }
+  // } else {  // Begin Parent Process
+    // Parent doesn't need socket
+    // close(server_socket);
+  // }
+
+	// Dummy loop to keep program alive
+  // for(int i = 0; ; i++){
+  //   if ((i%1000000)==0){
+  //     // puts("Another 1000 thousand");
+  //     i = 0;
+  //   }
+  // }
+
+  return 0;
+}
+
+int create_client(struct net_link link, int fd10[], int fd01[]) {
+
+  // if(!fork()){  // Child Process Start
+    close(fd10[PIPE_READ]);
+    close(fd01[PIPE_WRITE]);
+
+    // Create a socket
+    int network_socket;
+    // network_socket = socket(AF_INET, SOCK_STREAM, 0);
+    //
+    // // Specify an address for the socket
+    // struct sockaddr_in server_address;
+    // server_address.sin_family = AF_INET;
+    // server_address.sin_port = htons(PORT);
+    // server_address.sin_addr.s_addr = INADDR_ANY;
+
+    // =================== from lab 3 ===================
+    struct addrinfo hints, *servinfo, *p;
+  	int rv;
+  	char s[INET6_ADDRSTRLEN];
+
+    memset(&hints, 0, sizeof hints);
+  	hints.ai_family = AF_UNSPEC;
+  	hints.ai_socktype = SOCK_STREAM;
+
+		puts("about to getadrinfo client");
+		p = NULL;
+		while(p==NULL){
+	  	if ((rv = getaddrinfo(link.external_node_dom, link.external_port, &hints, &servinfo)) != 0) {
+	  		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+	  		return 1;
+	  	}
+
+	    // loop through all the results and connect to the first we can
+	  	for(p = servinfo; p != NULL; p = p->ai_next) {
+	  		if ((network_socket = socket(p->ai_family, p->ai_socktype,
+	  				p->ai_protocol)) == -1) {
+	  			perror("client: socket");
+	  			continue;
+	  		}
+
+	  		if (connect(network_socket, p->ai_addr, p->ai_addrlen) == -1) {
+	  			close(network_socket);
+	  			perror("client: connect");
+	  			continue;
+	  		}
+
+	  		break;
+	  	}
+
+	  	if (p == NULL) {
+	  		fprintf(stderr, "client: failed to connect\n");
+	  		// return 2;
+	  	}
+		}
+
+  	inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr),
+  			s, sizeof s);
+  	printf("client: connecting to %s\n", s);
+
+  	freeaddrinfo(servinfo); // all done with this structure
+    // =================== from lab 3 ===================
+
+    // Keep attempting to connect
+    // for(int connection_status = -1; connection_status != 0;){
+    //   connection_status = connect(network_socket, (struct sockaddr *) &server_address, sizeof(server_address));
+    //   if (connection_status==-1)
+    //     puts("connection error");
+    // }
+
+    // While loop would start here
+    char client_message[256];
+		int inbound_size;
+    while(1){
+      // READ pipe and if not empty, do a send
+      // IF RECV is not empty, WRITE TO PIPE
+      // Recieve data from the server_address
+      // char server_response[256];
+			if( (inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message))) > 0 ) {
+        // inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message));
+        send(network_socket, client_message, sizeof(client_message), 0);
+        memset(client_message, 0, sizeof(client_message));
+      }
+      // puts("the server sent the data:");
+      // puts(server_response);
+    }
+
+    close(network_socket);
+  // } else {  // Parent Process Start
+    // close(fd01[PIPE_READ]);
+    // close(fd10[PIPE_WRITE]);
+  // }
+
+	// Dummy loop to read back messages from forked while loop
+  // while (1) {
+  //   n = read(fd10[PIPE_READ], reply, 256);
+  //   if (n>0){
+  //     puts("the server sent the data:");
+  //     puts(reply);
+  //     memset(reply, 0, sizeof(reply));
+  //   }
+  // }
+
+  return 0;
 }

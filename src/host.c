@@ -312,7 +312,7 @@ void host_main(int host_id) {
                             malloc(sizeof(struct host_job));
                     ping_reply_received = 0;
                     new_job2->type = JOB_PING_WAIT_FOR_REPLY;
-                    new_job2->ping_timer = 100; // GLEN DEBUG TODO - used to be 10
+                    new_job2->ping_timer = 10; // GLEN DEBUG TODO - used to be 10
                     job_q_add(&job_q, new_job2);
 
                     break;
