@@ -513,18 +513,24 @@ void create_port_list() {
               //fprintf(file_ptr, "server while loop\n");
               // puts("server while loop");
               // Accept a connection -- we now have a client to communicate with
-              client_socket = accept(server_socket, NULL, NULL);
-              while( (inbound_size) > 0 ) {
-                inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0);
+              // client_socket = accept(server_socket, NULL, NULL);
+              if ((client_socket = accept(server_socket, NULL, NULL)) > 0){
+                while(client_socket > 0){
+                  while( (inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0)) > 0 ) {
+                    // inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0);
+                    write(fd10[PIPE_WRITE], server_message, sizeof(server_message));
+                    memset(server_message, 0, sizeof(server_message));
+                  }
+                  // if (inbound_size < 0) {perror("recv failed"); return 1;}
+
+                }
+                close(client_socket);
               }
-              if (inbound_size < 0) {perror("recv failed"); return 1;}
-              write(fd10[PIPE_WRITE], server_message, sizeof(server_message));
-              memset(server_message, 0, sizeof(server_message));
             }
             // fclose(file_ptr);
             close(server_socket);
           } else {  // Begin Parent Process
-            close(fd10[PIPE_WRITE]);
+            close(fd10[PIPE_WRITE]); // Close write-end that belongs to server
             // Parent doesn't need socket
             // fclose(file_ptr);
           }
@@ -534,7 +540,7 @@ void create_port_list() {
           if(!fork()){  // Child Process Start (Client)
             // puts("client fork start");
             close(fd10[PIPE_READ]);
-            //close(fd10[PIPE_WRITE]);
+            close(fd10[PIPE_WRITE]); // Supposed to be closed by previous parent
             close(fd01[PIPE_WRITE]);
 
             int network_socket;
@@ -613,17 +619,20 @@ void create_port_list() {
               // IF RECV is not empty, WRITE TO PIPE
               // Recieve data from the server_address
               // if (recv(network_socket, &server_response, sizeof(server_response), 0)>0){
-              while( (inbound_size) > 0 ) {
-                inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message));
+              // while( (inbound_size) > 0 ) {
+              if( (inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message))) > 0 ) {
+                // inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message));
+                send(network_socket, client_message, sizeof(client_message), 0);
+                memset(client_message, 0, sizeof(client_message));
               }
-              if (inbound_size < 0) {perror("read failed"); return 1;}
-              send(network_socket, client_message, sizeof(client_message), 0);
-              memset(client_message, 0, sizeof(client_message));
+              // if (inbound_size < 0) {perror("read failed"); return 1;}
+              // send(network_socket, client_message, sizeof(client_message), 0);
+              // memset(client_message, 0, sizeof(client_message));
               // } end if(recv...)
             }
             close(network_socket);
           } else {  // Parent Process Start
-            close(fd01[PIPE_READ]);
+            close(fd01[PIPE_READ]); // Close read-end belonging to client
           }
           /**************************Client Creation**************************/
           p0->next = p1; /* Insert ports in linked lisst */
