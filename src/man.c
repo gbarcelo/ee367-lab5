@@ -276,6 +276,9 @@ void man_main() {
         		case 'd': /* Download a file from a host */
         			file_download(curr_host);
         			break;
+            //case 'n': /*set host DNS*/
+              //change_DNS();
+              //break;
             case 'q':  /* Quit */
                 return;
             default:
