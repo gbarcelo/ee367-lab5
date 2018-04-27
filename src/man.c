@@ -31,7 +31,7 @@ void display_host(struct man_port_at_man *list,
                   struct man_port_at_man *curr_host);
 
 void display_host_state(struct man_port_at_man *curr_host);
-
+void change_DNS(struct man_port_at_man *curr_host);//TODO update this wehn appropriate
 void set_host_dir(struct man_port_at_man *curr_host);
 
 char man_get_user_cmd(int curr_host);
@@ -46,6 +46,7 @@ char man_get_user_cmd(int curr_host) {
         printf("\nCommands (Current host ID = %d):\n", curr_host);
         printf("   (s) Display host's state\n");
         printf("   (m) Set host's main directory\n");
+        printf("   (n) Register host's DNS\n");
         printf("   (h) Display all hosts\n");
         printf("   (c) Change host\n");
         printf("   (p) Ping a host\n");
@@ -61,6 +62,7 @@ char man_get_user_cmd(int curr_host) {
         switch (cmd) {
             case 's':
             case 'm':
+            case 'n':
             case 'h':
             case 'c':
             case 'p':
@@ -92,6 +94,28 @@ void change_host(struct man_port_at_man *list,
             break;
         }
     }
+}
+//TODO properly implement change_DNS
+void change_DNS(struct man_port_at_man *curr_host){
+    char msg[MAN_MSG_LENGTH];
+    char reply[MAN_MSG_LENGTH];
+    int host_to_ping;
+    int n;
+
+    printf("Enter DNS id to register: ");
+    scanf("%d", &host_to_ping);
+    n = sprintf(msg, "n %d", host_to_ping);
+
+    write(curr_host->send_fd, msg, n);
+
+    n = 0;
+    while (n <= 0) {
+        usleep(TENMILLISEC);
+        n = read(curr_host->recv_fd, reply, MAN_MSG_LENGTH);
+    }
+    reply[n] = '\0';
+    printf("%s\n", reply);
+
 }
 
 /* Display the hosts on the consosle */
@@ -260,6 +284,9 @@ void man_main() {
             case 'm': /* Set host directory */
                 set_host_dir(curr_host);
                 break;
+            case 'n': /*change DNS of host properly implement change_DNS*/
+                change_DNS(curr_host);
+              break;
             case 'h': /* Display all hosts connected to manager */
                 display_host(host_list, curr_host);
                 break;

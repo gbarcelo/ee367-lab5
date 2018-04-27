@@ -26,7 +26,7 @@
 #define TENMILLISEC 10000   /* 10 millisecond sleep */
 #define MAX_TABLE_SIZE 100 //Forwarding table size
 
-void switch_main(int host_id) {
+void dns_main(int host_id) {
 
 	/* State */
 	char dir[MAX_DIR_NAME];

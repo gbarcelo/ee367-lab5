@@ -214,6 +214,7 @@ void host_main(int host_id) {
     int node_port_num;            // Number of node ports
 
     int ping_reply_received;
+    int dns_reply_received;
 
     int i, k, n;
     int dst;
@@ -293,6 +294,35 @@ void host_main(int host_id) {
                     dir[i] = man_msg[i];
                     break;
 
+                case 'n'://TODO properly implement this
+                    //begin part taken from p
+                    sscanf(man_msg, "%d", &dst);
+                    new_packet = (struct packet *)
+                            malloc(sizeof(struct packet));
+                    new_packet->src = (char) host_id;
+                    new_packet->dst = (char) dst;
+                    new_packet->type = (char) PKT_DNS_REG; //PKT_PING_REQ;
+                    new_packet->length = 0;
+                    new_job = (struct host_job *)
+                            malloc(sizeof(struct host_job));
+                    new_job->packet = new_packet;
+                    new_job->type = JOB_SEND_PKT_ALL_PORTS;
+                    job_q_add(&job_q, new_job);
+
+                    new_job2 = (struct host_job *)
+                            malloc(sizeof(struct host_job));
+                    dns_reply_received = 0;
+                    new_job2->type = JOB_DNS_WAIT_FOR_REPLY;
+                    new_job2->ping_timer = 10;
+                    job_q_add(&job_q, new_job2);
+                    //begin part taken from m
+                    dir_valid = 1;
+                    for (i = 0; man_msg[i] != '\0'; i++) {
+                        dir[i] = man_msg[i];
+                    }
+                    dir[i] = man_msg[i];
+                    break;
+
                 case 'p': // Sending ping request
                     // Create new ping request packet
                     sscanf(man_msg, "%d", &dst);
@@ -317,7 +347,7 @@ void host_main(int host_id) {
 
                     break;
                     //andrew
-          			case 'd':/* Download a file to a host TODO properly do this */
+          			case 'd':/* Download a file to a host */
           				sscanf(man_msg, "%d %s", &dst, name);
           				/*create new download request packet*/
           				new_packet = (struct packet *)
@@ -387,6 +417,17 @@ void host_main(int host_id) {
                         free(in_packet);
                         free(new_job);
                         break;
+
+                   case (char) PKT_DNS_REG://TODO properly implement these packet responses
+                       new_job->type = JOB_DNS_SEND_REPLY;
+                       job_q_add(&job_q, new_job);
+                       break;
+
+                   case (char) PKT_DNS_REG_REPLY:
+                       dns_reply_received = 1;
+                       free(in_packet);
+                       free(new_job);
+                       break;
 
                         /*
                          * The next two packet types
@@ -506,6 +547,51 @@ void host_main(int host_id) {
 
                     break;
 
+                case JOB_DNS_SEND_REPLY://TODO properly implement
+                    /* Send a ping reply packet */
+
+                    /* Create ping reply packet */
+                    new_packet = (struct packet *)
+                            malloc(sizeof(struct packet));
+                    new_packet->dst = new_job->packet->src;
+                    new_packet->src = (char) host_id;
+                    new_packet->type = PKT_DNS_REG_REPLY;
+                    new_packet->length = 0;
+
+                    /* Create job for the ping reply */
+                    new_job2 = (struct host_job *)
+                            malloc(sizeof(struct host_job));
+                    new_job2->type = JOB_SEND_PKT_ALL_PORTS;
+                    new_job2->packet = new_packet;
+
+                    /* Enter job in the job queue */
+                    job_q_add(&job_q, new_job2);
+
+                    /* Free old packet and job memory space */
+                    free(new_job->packet);
+                    free(new_job);
+                    break;
+
+                case JOB_DNS_WAIT_FOR_REPLY:
+                    /* Wait for a ping reply packet */
+
+                    if (dns_reply_received == 1) {
+                        n = sprintf(man_reply_msg, "DNS Response Received!");
+                        man_reply_msg[n] = '\0';
+                        write(man_port->send_fd, man_reply_msg, n + 1);
+                        free(new_job);
+                    } else if (new_job->ping_timer > 1) {
+                        new_job->ping_timer--;
+                        job_q_add(&job_q, new_job);
+                    } else { /* Time out */
+                        n = sprintf(man_reply_msg, "No DNS Response");
+                        man_reply_msg[n] = '\0';
+                        write(man_port->send_fd, man_reply_msg, n + 1);
+                        free(new_job);
+                    }
+
+                    break;
+
 
                     /* The next three jobs deal with uploading a file */
 
@@ -548,7 +634,7 @@ void host_main(int host_id) {
                             new_job2->type = JOB_SEND_PKT_ALL_PORTS;
                             new_job2->packet = new_packet;
                             job_q_add(&job_q, new_job2);
-                						// TODO LOCATION OF INTERMEDIATE PACKETS andrew
+                						//LOCATION OF INTERMEDIATE PACKETS andrew
                 						/*
                 						 * Create the second packet which
                 						 * has file contents
@@ -647,7 +733,7 @@ void host_main(int host_id) {
                     free(new_job);
                     break;
                     //andrew
-              		case JOB_FILE_UPLOAD_RECV_IMD://TODO FINISH THIS
+              		case JOB_FILE_UPLOAD_RECV_IMD:
 
               			/*
               			 * Download packet payload into file buffer
