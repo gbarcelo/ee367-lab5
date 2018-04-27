@@ -439,7 +439,7 @@ void create_port_list() {
 
 
           if(!fork()) { // Begin Child Process (Server)
-            create_server(g_net_link[i], fd10, fd01);
+            create_server(g_net_link[i], p1);
           } else {  // Begin Parent Process
             close(fd10[PIPE_WRITE]); // Close write-end that belongs to server
             // Parent doesn't need socket
@@ -449,7 +449,7 @@ void create_port_list() {
 
           /**************************Client Creation**************************/
           if(!fork()){  // Child Process Start (Client)
-            create_client(g_net_link[i], fd10, fd01);
+            create_client(g_net_link[i], p1);
           } else {  // Parent Process Start
             close(fd01[PIPE_READ]); // Close read-end belonging to client
           }
@@ -625,7 +625,7 @@ int load_net_data_file() {
     return (1);
 }
 
-int create_server(struct net_link link, int fd10[], int fd01[]) {
+int create_server(struct net_link link, struct net_port *p1) {
 
   char server_message[256] = "Glen: You have reached the server.";
 
@@ -709,8 +709,9 @@ int create_server(struct net_link link, int fd10[], int fd01[]) {
         while(client_socket > 0){
 					while( (inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0)) > 0 ) {
             // inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0);
-            write(fd10[PIPE_WRITE], server_message, sizeof(server_message));
+            write(p1->pipe_send_fd, server_message, sizeof(server_message));
             memset(server_message, 0, sizeof(server_message));
+            puts("A message was received from client and memset");
           }
         }
         close(client_socket);
@@ -732,11 +733,11 @@ int create_server(struct net_link link, int fd10[], int fd01[]) {
   return 0;
 }
 
-int create_client(struct net_link link, int fd10[], int fd01[]) {
+int create_client(struct net_link link, struct net_port *p1) {
 
   // if(!fork()){  // Child Process Start
-    close(fd10[PIPE_READ]);
-    close(fd01[PIPE_WRITE]);
+    // close(fd10[PIPE_READ]);
+    // close(fd01[PIPE_WRITE]);
 
     // Create a socket
     int network_socket;
@@ -810,10 +811,11 @@ int create_client(struct net_link link, int fd10[], int fd01[]) {
       // IF RECV is not empty, WRITE TO PIPE
       // Recieve data from the server_address
       // char server_response[256];
-			if( (inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message))) > 0 ) {
+			if( (inbound_size = read(p1->pipe_recv_fd, client_message , sizeof(client_message))) > 0 ) {
         // inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message));
         send(network_socket, client_message, sizeof(client_message), 0);
         memset(client_message, 0, sizeof(client_message));
+        puts("A message from the local network was recieved and sent through socket");
       }
       // puts("the server sent the data:");
       // puts(server_response);
