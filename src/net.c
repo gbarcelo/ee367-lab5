@@ -701,17 +701,23 @@ int create_server(struct net_link link, struct net_port *p1) {
     int i = 0;
 		while(1){
       // Accept a connection -- we now have a client to communicate with
-			int inbound_size;
+			int inbound_size = 1;  // To enter while-loop to recv()
       int client_socket;
       // client_socket = accept(server_socket, NULL, NULL);
       if ((client_socket = accept(server_socket, NULL, NULL)) > 0){
 				puts("server accepted client");
+        // inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0);
         while(client_socket > 0){
-					while( (inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0)) > 0 ) {
+          // while((inbound_size > 0) && !((server_message[0] == 0) && (server_message[1] == 0))) {
+          while((inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0))> 0) {
             // inbound_size = recv(client_socket , server_message , sizeof(server_message) , 0);
+            // if ((server_message[0] == 0) && (server_message[1] == 0)) { break; }
             write(p1->pipe_send_fd, server_message, sizeof(server_message));
-            memset(server_message, 0, sizeof(server_message));
-            puts("A message was received from client and memset");
+            // memset(server_message, 0, sizeof(server_message));
+            // puts("A message was received from client and sent to local network");
+            printf("SERVER RECV, src=%d dst=%d\n",
+            		(int) server_message[0],
+            		(int) server_message[1]);
           }
         }
         close(client_socket);
@@ -811,11 +817,16 @@ int create_client(struct net_link link, struct net_port *p1) {
       // IF RECV is not empty, WRITE TO PIPE
       // Recieve data from the server_address
       // char server_response[256];
-			if( (inbound_size = read(p1->pipe_recv_fd, client_message , sizeof(client_message))) > 0 ) {
-        // inbound_size = read(fd01[PIPE_READ], client_message , sizeof(client_message));
+      inbound_size = read(p1->pipe_recv_fd, client_message , sizeof(client_message));
+			if((inbound_size > 0) && !((client_message[0] == 0) && (client_message[1] == 0))) {
+
+        // if ((client_message[0] == 0) && (client_message[1] == 0)) { break; }
         send(network_socket, client_message, sizeof(client_message), 0);
-        memset(client_message, 0, sizeof(client_message));
-        puts("A message from the local network was recieved and sent through socket");
+        // memset(client_message, 0, sizeof(client_message));
+        // puts("A message from the local network was recieved and sent through socket");
+        printf("CLIENT SEND, src=%d dst=%d\n",
+        		(int) client_message[0],
+        		(int) client_message[1]);
       }
       // puts("the server sent the data:");
       // puts(server_response);

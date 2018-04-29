@@ -23,12 +23,13 @@ void packet_send(struct net_port *port, struct packet *p) {
         for (i = 0; i < p->length; i++) {
             msg[i + 4] = p->payload[i];
         }
+        // if ((msg[0] == 0) && (msg[1] == 0)) { return; }
         write(port->pipe_send_fd, msg, p->length + 4);
-printf("PACKET SEND, src=%d dst=%d p-src=%d p-dst=%d\n",
-		(int) msg[0],
-		(int) msg[1],
-		(int) p->src,
-		(int) p->dst);
+// printf("PACKET SEND, src=%d dst=%d p-src=%d p-dst=%d\n",
+// 		(int) msg[0],
+// 		(int) msg[1],
+// 		(int) p->src,
+// 		(int) p->dst);
     // } // if statement
 
     return;
@@ -50,11 +51,11 @@ int packet_recv(struct net_port *port, struct packet *p) {
                 p->payload[i] = msg[i + 4];
             }
 
-printf("PACKET RECV, src=%d dst=%d p-src=%d p-dst=%d\n",
-		(int) msg[0],
-		(int) msg[1],
-		(int) p->src,
-		(int) p->dst);
+// printf("PACKET RECV, src=%d dst=%d p-src=%d p-dst=%d\n",
+// 		(int) msg[0],
+// 		(int) msg[1],
+// 		(int) p->src,
+// 		(int) p->dst);
         }
     // } // if (port-type==PIPE)
 
